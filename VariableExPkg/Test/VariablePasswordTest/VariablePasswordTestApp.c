@@ -67,6 +67,9 @@ GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39 },
 };
 
+/**
+  Unit test for EFI_VARIABLE_PASSWORD_AUTHENTICATED.
+**/
 VOID
 PasswordAuthTest (
   VOID
@@ -196,6 +199,9 @@ PasswordAuthTest (
   DEBUG((EFI_D_INFO, "##### PasswordAuthTest END #####\n"));
 }
 
+/**
+  Unit test for EFI_VARIABLE_PASSWORD_PROTECTED.
+**/
 VOID
 PasswordProtectTest (
   VOID

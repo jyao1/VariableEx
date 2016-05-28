@@ -47,9 +47,11 @@ EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable = {
   &mVariablePpi
 };
 
-EFI_GUID mInternalPasswordVariableGuid = { \
-  0xfd5c8a21, 0x3001, 0x4105, 0x96, 0xee, 0x96, 0x13, 0x3f, 0xa7, 0x1b, 0x6a \
-};
+#define INTERNAL_PASSWORD_VARIABLE_GUID { \
+  0xfd5c8a21, 0x3001, 0x4105, { 0x96, 0xee, 0x96, 0x13, 0x3f, 0xa7, 0x1b, 0x6a } \
+}
+
+EFI_GUID mInternalPasswordVariableGuid = INTERNAL_PASSWORD_VARIABLE_GUID;
 
 /**
 
@@ -1144,7 +1146,6 @@ PeiGetVariable (
     } else {
       UINTN                         EncVarDataSize;
       EFI_VARIABLE_PASSWORD_DATA    *PasswordData;
-      UINTN                         PasswordDataSize;
       VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
       VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
       BOOLEAN                       Result;
@@ -1165,8 +1166,6 @@ PeiGetVariable (
       //
       // Update Data and DataSize
       //
-      PasswordDataSize = sizeof(EFI_VARIABLE_PASSWORD_DATA) + PasswordData->PasswordSize;
-
       VariablePasswordHashHeader.PasswordHashType = PASSWORD_HASH_TYPE_SHA256;
       VariablePasswordHashHeader.PasswordHashHeadSize = sizeof(VARIABLE_PASSWORD_HASH_HEADER);
 
@@ -1183,7 +1182,8 @@ PeiGetVariable (
                  PasswordData->PasswordSize,
                  VariablePasswordHashHeader.PasswordSalt,
                  sizeof(VariablePasswordHashHeader.PasswordSalt),
-                 VariablePasswordHashHeader.PasswordHash
+                 VariablePasswordHashHeader.PasswordHash,
+                 sizeof(VariablePasswordHashHeader.PasswordHash)
                  );
       if (!Result) {
         return EFI_OUT_OF_RESOURCES;
@@ -1210,14 +1210,14 @@ PeiGetVariable (
       //
       // Get data
       //
+      ScratchBufferSize = PcdGet32(PcdMaxVariableSize);
+      if (ScratchBufferSize < PcdGet32(PcdMaxAuthVariableSize)) {
+        ScratchBufferSize = PcdGet32(PcdMaxAuthVariableSize);
+      }
       GuidHob = GetFirstGuidHob (&mInternalPasswordVariableGuid);
       if (GuidHob != NULL) {
         ScratchBuffer = (VARIABLE_STORE_HEADER *) GET_GUID_HOB_DATA (GuidHob);
       } else {
-        ScratchBufferSize = PcdGet32 (PcdMaxVariableSize);
-        if (ScratchBufferSize < PcdGet32 (PcdMaxAuthVariableSize)) {
-          ScratchBufferSize = PcdGet32 (PcdMaxAuthVariableSize);
-        }
         ScratchBuffer = BuildGuidHob (&mInternalPasswordVariableGuid, ScratchBufferSize * 2);
       }
 
@@ -1233,12 +1233,14 @@ PeiGetVariable (
                  sizeof(VariablePasswordHashHeader.PasswordSalt),
                  (UINT8 *)ScratchBuffer + ScratchBufferSize,
                  EncVarDataSize,
-                 ScratchBuffer
+                 ScratchBuffer,
+                 EncVarDataSize
                  );
       if (!Result) {
         return EFI_OUT_OF_RESOURCES;
       }
       CopyMem (Data, ScratchBuffer, VarDataSize);
+	  ZeroMem (ScratchBuffer, VarDataSize);
     }
 
     if (Attributes != NULL) {

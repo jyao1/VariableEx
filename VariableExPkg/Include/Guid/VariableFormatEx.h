@@ -18,23 +18,23 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 // EDKII Variable driver extension for variable storage
 //
 #define PASSWORD_HASH_TYPE_SHA256  0x000B
-#define PASSWORD_HASH_SIZE_SHA256  32
-#define PASSWORD_HASH_SALT_SHA256  PASSWORD_HASH_SIZE_SHA256
+#define SHA256_DIGEST_SIZE         32
 
 typedef struct {
   UINT32                      PasswordHashType;
   UINT32                      PasswordHashHeadSize; // sizeof(VARIABLE_PASSWORD_HASH_HEADER)
-  UINT8                       PasswordHash[PASSWORD_HASH_SIZE_SHA256];
-  UINT8                       PasswordSalt[PASSWORD_HASH_SALT_SHA256];
+  UINT8                       PasswordHash[SHA256_DIGEST_SIZE];
+  UINT8                       PasswordSalt[SHA256_DIGEST_SIZE];
 } VARIABLE_PASSWORD_HASH_HEADER;
 
 #define PASSWORD_SYM_TYPE_AES      0x0006
+#define AES_BLOCK_SIZE             16
 
 typedef struct {
   UINT32                      PasswordDataType;
-  UINT32                      PasswordDataHeadSize; // sizeof(VARIABLE_PASSWORD_DATA_HEADER)
+  UINT32                      PasswordDataHeadSize;  // sizeof(VARIABLE_PASSWORD_DATA_HEADER)
   UINT32                      PasswordPlainDataSize; // Plain text data size
-  UINT32                      PasswordDataSize; // Data size
+  UINT32                      PasswordDataSize;      // Data size
 } VARIABLE_PASSWORD_DATA_HEADER;
 
 //

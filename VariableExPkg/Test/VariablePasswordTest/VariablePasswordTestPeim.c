@@ -40,7 +40,14 @@ GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39 },
 };
 
-EFI_STATUS
+/**
+  Unit test for EFI_VARIABLE_PASSWORD_AUTHENTICATED.
+
+  @param  FileHandle   Handle of the file being invoked.
+                       Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
+  @param  PeiServices  General purpose services available to every PEIM.
+**/
+VOID
 EFIAPI
 PasswordAuthTest (
   IN       EFI_PEI_FILE_HANDLE       FileHandle,
@@ -82,10 +89,17 @@ PasswordAuthTest (
 
   DEBUG((EFI_D_INFO, "##### PasswordAuthTest END #####\n"));
 
-  return EFI_SUCCESS;
+  return;
 }
 
-EFI_STATUS
+/**
+  Unit test for EFI_VARIABLE_PASSWORD_PROTECTED.
+
+  @param  FileHandle   Handle of the file being invoked.
+                       Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
+  @param  PeiServices  General purpose services available to every PEIM.
+**/
+VOID
 EFIAPI
 PasswordProtectTest (
   IN       EFI_PEI_FILE_HANDLE       FileHandle,
@@ -145,7 +159,7 @@ PasswordProtectTest (
 
   DEBUG((EFI_D_INFO, "##### PasswordProtectTest END #####\n"));
 
-  return EFI_SUCCESS;
+  return;
 }
 
 /**

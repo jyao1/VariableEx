@@ -3014,7 +3014,6 @@ VariableServiceGetVariable (
     } else {
       UINTN                         EncVarDataSize;
       EFI_VARIABLE_PASSWORD_DATA    *PasswordData;
-      UINTN                         PasswordDataSize;
       VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
       VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
       BOOLEAN                       Result;
@@ -3034,8 +3033,6 @@ VariableServiceGetVariable (
       //
       // Update Data and DataSize
       //
-      PasswordDataSize = sizeof(EFI_VARIABLE_PASSWORD_DATA) + PasswordData->PasswordSize;
-
       VariablePasswordHashHeader.PasswordHashType = PASSWORD_HASH_TYPE_SHA256;
       VariablePasswordHashHeader.PasswordHashHeadSize = sizeof(VARIABLE_PASSWORD_HASH_HEADER);
 
@@ -3052,7 +3049,8 @@ VariableServiceGetVariable (
                  PasswordData->PasswordSize,
                  VariablePasswordHashHeader.PasswordSalt,
                  sizeof(VariablePasswordHashHeader.PasswordSalt),
-                 VariablePasswordHashHeader.PasswordHash
+                 VariablePasswordHashHeader.PasswordHash,
+                 sizeof(VariablePasswordHashHeader.PasswordHash)
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
@@ -3092,13 +3090,15 @@ VariableServiceGetVariable (
                  sizeof(VariablePasswordHashHeader.PasswordSalt),
                  GetVariableUserDataPtr (Variable.CurrPtr),
                  EncVarDataSize,
-                 mVariableModuleGlobal->ScratchPasswordBuffer
+                 mVariableModuleGlobal->ScratchPasswordBuffer,
+                 EncVarDataSize
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
         goto Done;
       }
       CopyMem (Data, mVariableModuleGlobal->ScratchPasswordBuffer, VarDataSize);
+	  ZeroMem (mVariableModuleGlobal->ScratchPasswordBuffer, VarDataSize);
     }
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
@@ -3582,6 +3582,9 @@ VariableServiceSetVariable (
 
     if (PasswordProtected) {
       EncRawDataSize = ALIGN_VALUE(RawDataSize, AES_BLOCK_SIZE);
+      ZeroMem ((UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize, EncRawDataSize);
+      CopyMem ((UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize, RawData, RawDataSize);
+      RawData = (UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize;
     } else {
       EncRawDataSize = RawDataSize;
     }
@@ -3603,30 +3606,23 @@ VariableServiceSetVariable (
       InternalDumpData(OldVariablePasswordHashHeader->PasswordSalt, sizeof(OldVariablePasswordHashHeader->PasswordSalt));
       DEBUG((EFI_D_INFO, "\n"));
       CopyMem(VariablePasswordHashHeader.PasswordSalt, OldVariablePasswordHashHeader->PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
-    } else {
-      DEBUG((EFI_D_INFO, "Old PASSWORD_PROTECTED Variable NOT Found!\n"));
-      PasswordLibGenerateSalt(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
-      DEBUG((EFI_D_INFO, "New SALT - "));
-      InternalDumpData(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
-      DEBUG((EFI_D_INFO, "\n"));
-    }
-    Result = PasswordLibGenerateHash (
-               PASSWORD_HASH_TYPE_SHA256,
-               PasswordData + 1,
-               PasswordData->PasswordSize,
-               VariablePasswordHashHeader.PasswordSalt,
-               sizeof(VariablePasswordHashHeader.PasswordSalt),
-               VariablePasswordHashHeader.PasswordHash
-               );
-    if (!Result) {
-      Status = EFI_OUT_OF_RESOURCES;
-      goto Done;
-    }
 
-    //
-    // Validation
-    //
-    if (Variable.CurrPtr != NULL) {
+      Result = PasswordLibGenerateHash (
+                 PASSWORD_HASH_TYPE_SHA256,
+                 PasswordData + 1,
+                 PasswordData->PasswordSize,
+                 VariablePasswordHashHeader.PasswordSalt,
+                 sizeof(VariablePasswordHashHeader.PasswordSalt),
+                 VariablePasswordHashHeader.PasswordHash,
+                 sizeof(VariablePasswordHashHeader.PasswordHash)
+                 );
+      if (!Result) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      //
+      // Validation
+      //
       OldVariablePasswordHashHeader = (VARIABLE_PASSWORD_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
       DEBUG((EFI_D_INFO, "Compare PASSWORD_PROTECTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
@@ -3642,6 +3638,8 @@ VariableServiceSetVariable (
       } else {
         DEBUG((EFI_D_INFO, "HASH match!\n"));
       }
+    } else {
+      DEBUG((EFI_D_INFO, "Old PASSWORD_PROTECTED Variable NOT Found!\n"));
     }
 
     //
@@ -3649,6 +3647,32 @@ VariableServiceSetVariable (
     //
     if (RawDataSize != 0) {
       DEBUG((EFI_D_INFO, "Update PASSWORD_PROTECTED Variable\n"));
+      //
+      // Re-generate salt
+      //
+      Result = PasswordLibGenerateSalt(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      if (!Result) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+      DEBUG((EFI_D_INFO, "New SALT - "));
+      InternalDumpData(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      DEBUG((EFI_D_INFO, "\n"));
+
+      Result = PasswordLibGenerateHash(
+                 PASSWORD_HASH_TYPE_SHA256,
+                 PasswordData + 1,
+                 PasswordData->PasswordSize,
+                 VariablePasswordHashHeader.PasswordSalt,
+                 sizeof(VariablePasswordHashHeader.PasswordSalt),
+                 VariablePasswordHashHeader.PasswordHash,
+                 sizeof(VariablePasswordHashHeader.PasswordHash)
+                 );
+      if (!Result) {
+        Status = EFI_OUT_OF_RESOURCES;
+        goto Done;
+      }
+
       CopyMem(
         mVariableModuleGlobal->ScratchPasswordBuffer,
         &VariablePasswordHashHeader,
@@ -3672,8 +3696,10 @@ VariableServiceSetVariable (
                    sizeof(VariablePasswordHashHeader.PasswordSalt),
                    RawData,
                    EncRawDataSize,
-                   (VOID *)((UINTN)mVariableModuleGlobal->ScratchPasswordBuffer + sizeof(VariablePasswordHashHeader) + sizeof(VariablePasswordDataHeader))
+                   (VOID *)((UINTN)mVariableModuleGlobal->ScratchPasswordBuffer + sizeof(VariablePasswordHashHeader) + sizeof(VariablePasswordDataHeader)),
+                   EncRawDataSize
                    );
+        ZeroMem (RawData, RawDataSize);
         if (!Result) {
           Status = EFI_OUT_OF_RESOURCES;
           goto Done;
@@ -4467,7 +4493,7 @@ VariableCommonInitialize (
     mVariableModuleGlobal->ScratchPasswordBufferSize = mVariableModuleGlobal->MaxAuthVariableSize;
   }
 
-  mVariableModuleGlobal->ScratchPasswordBuffer = AllocateRuntimeZeroPool(mVariableModuleGlobal->ScratchPasswordBufferSize);
+  mVariableModuleGlobal->ScratchPasswordBuffer = AllocateRuntimeZeroPool(mVariableModuleGlobal->ScratchPasswordBufferSize * 2);
   if (mVariableModuleGlobal->ScratchPasswordBuffer == NULL) {
     FreePool(mVariableModuleGlobal);
     return EFI_OUT_OF_RESOURCES;

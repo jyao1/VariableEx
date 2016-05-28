@@ -1,4 +1,6 @@
 ## @file
+# This package provides password based integrity and confidentiality support
+# for UEFI variable.
 #
 # Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
 #

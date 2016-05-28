@@ -20,8 +20,10 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
   @param[in, out]   SaltValue           Points to the salt buffer
   @param[in]        SaltSize            Size of the salt buffer
 
+  @retval      TRUE           Salt is generated.
+  @retval      FALSE          Salt is not generated.
 **/
-VOID
+BOOLEAN
 EFIAPI
 PasswordLibGenerateSalt(
   IN OUT UINT8  *SaltValue,
@@ -34,17 +36,19 @@ PasswordLibGenerateSalt(
 #define PASSWORD_HASH_TYPE_SHA256  0x000B
 #define PASSWORD_SYM_TYPE_AES      0x0006
 
-#define AES_BLOCK_SIZE  16
+#define SHA256_DIGEST_SIZE 32
+#define AES_BLOCK_SIZE     16
 
 /**
   Hash the data.
 
-  @param[in]   HashType       Hash type
-  @param[in]   Password       Points to the password buffer
-  @param[in]   PasswordSize   Password buffer size
-  @param[in]   SaltValue      Points to the salt buffer
-  @param[in]   SaltSize       Size of the salt buffer
-  @param[out]  PasswordHash   Points to the hashed result
+  @param[in]   HashType         Hash type
+  @param[in]   Password         Points to the password buffer
+  @param[in]   PasswordSize     Password buffer size
+  @param[in]   SaltValue        Points to the salt buffer
+  @param[in]   SaltSize         Size of the salt buffer
+  @param[out]  PasswordHash     Points to the hashed result
+  @param[in]   PasswordHashSize Size of the hash buffer
 
   @retval      TRUE           Hash the data successfully.
   @retval      FALSE          Failed to hash the data.
@@ -58,7 +62,8 @@ PasswordLibGenerateHash(
   IN   UINTN               PasswordSize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
-  OUT  UINT8               *PasswordHash
+  OUT  UINT8               *PasswordHash,
+  IN   UINTN               PasswordHashSize
   );
 
 /**
@@ -74,6 +79,7 @@ PasswordLibGenerateHash(
   @param[in]   InputData      Points to the input data
   @param[in]   InputDataSize  Size of the input data
   @param[out]  OutputData     Points to the output data
+  @param[in]   OutputDataSize Size of the output data
 
   @retval      TRUE           Encrypt the data successfully.
   @retval      FALSE          Failed to encrypt the data.
@@ -89,7 +95,8 @@ PasswordLibEncrypt(
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,
   IN   UINTN               InputDataSize,
-  OUT  VOID                *OutputData
+  OUT  VOID                *OutputData,
+  IN   UINTN               OutputDataSize
   );
 
 /**
@@ -105,6 +112,7 @@ PasswordLibEncrypt(
   @param[in]   InputData      Points to the input data
   @param[in]   InputDataSize  Size of the input data
   @param[out]  OutputData     Points to the output data
+  @param[in]   OutputDataSize Size of the output data
 
   @retval      TRUE           Decrypt the data successfully.
   @retval      FALSE          Failed to decrypt the data.
@@ -120,7 +128,8 @@ PasswordLibDecrypt(
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,
   IN   UINTN               InputDataSize,
-  OUT  VOID                *OutputData
+  OUT  VOID                *OutputData,
+  IN   UINTN               OutputDataSize
   );
 
 #endif
