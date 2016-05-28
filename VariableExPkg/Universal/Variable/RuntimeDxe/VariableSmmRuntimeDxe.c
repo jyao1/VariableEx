@@ -554,6 +554,7 @@ RuntimeServiceGetVariable (
   }
 
 Done:
+  ZeroMem (mVariableBuffer, mVariableBufferSize);
   ReleaseLockOnlyAtBootTime (&mVariableServicesLock);
   return Status;
 }
@@ -748,6 +749,7 @@ RuntimeServiceSetVariable (
   Status = SendCommunicateBuffer (PayloadSize);
 
 Done:
+  ZeroMem(mVariableBuffer, mVariableBufferSize);
   ReleaseLockOnlyAtBootTime (&mVariableServicesLock);
 
   if (!EfiAtRuntime ()) {

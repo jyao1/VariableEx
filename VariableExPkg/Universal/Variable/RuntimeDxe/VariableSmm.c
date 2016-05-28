@@ -780,6 +780,7 @@ SmmVariableHandler (
 
 EXIT:
 
+  ZeroMem(mVariableBufferPayload, mVariableBufferPayloadSize);
   SmmVariableFunctionHeader->ReturnStatus = Status;
 
   return EFI_SUCCESS;
