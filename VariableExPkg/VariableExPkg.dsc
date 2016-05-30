@@ -196,3 +196,5 @@
   VariableExPkg/Universal/Variable/RuntimeDxe/VariableSmm.inf
   VariableExPkg/Universal/Variable/RuntimeDxe/VariableSmmRuntimeDxe.inf
 
+  VariableExPkg/Test/VariablePasswordTest/VariablePasswordTestSmm.inf
+

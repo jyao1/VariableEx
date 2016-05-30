@@ -16,7 +16,6 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Ppi/ReadOnlyVariable2.h>
 
 #include <Library/DebugLib.h>
-#include <Library/PeimEntryPoint.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/PeiServicesLib.h>
@@ -42,16 +41,10 @@ GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
 
 /**
   Unit test for EFI_VARIABLE_PASSWORD_AUTHENTICATED.
-
-  @param  FileHandle   Handle of the file being invoked.
-                       Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
-  @param  PeiServices  General purpose services available to every PEIM.
 **/
 VOID
-EFIAPI
 PasswordAuthTest (
-  IN       EFI_PEI_FILE_HANDLE       FileHandle,
-  IN CONST EFI_PEI_SERVICES          **PeiServices
+  VOID
   )
 {
   EFI_PEI_READ_ONLY_VARIABLE2_PPI *VariablePpi;
@@ -60,7 +53,7 @@ PasswordAuthTest (
   UINTN                           DataSize;
   UINT32                          Attributes;
 
-  DEBUG((EFI_D_INFO, "##### PasswordAuthTest END #####\n"));
+  DEBUG((EFI_D_INFO, "##### PasswordAuthTest BEGIN #####\n"));
 
   Status = PeiServicesLocatePpi(&gEfiPeiReadOnlyVariable2PpiGuid, 0, NULL, (VOID **)&VariablePpi);
   ASSERT_EFI_ERROR(Status);
@@ -88,22 +81,14 @@ PasswordAuthTest (
   }
 
   DEBUG((EFI_D_INFO, "##### PasswordAuthTest END #####\n"));
-
-  return;
 }
 
 /**
   Unit test for EFI_VARIABLE_PASSWORD_PROTECTED.
-
-  @param  FileHandle   Handle of the file being invoked.
-                       Type EFI_PEI_FILE_HANDLE is defined in FfsFindNextFile().
-  @param  PeiServices  General purpose services available to every PEIM.
 **/
 VOID
-EFIAPI
 PasswordProtectTest (
-  IN       EFI_PEI_FILE_HANDLE       FileHandle,
-  IN CONST EFI_PEI_SERVICES          **PeiServices
+  VOID
   )
 {
   EFI_PEI_READ_ONLY_VARIABLE2_PPI       *VariablePpi;
@@ -113,12 +98,12 @@ PasswordProtectTest (
   UINTN                                 DataSize;
   UINT32                                Attributes;
 
-  DEBUG((EFI_D_INFO, "##### PasswordProtectTest END #####\n"));
+  DEBUG((EFI_D_INFO, "##### PasswordProtectTest BEGIN #####\n"));
 
   Status = PeiServicesLocatePpi(&gEfiPeiReadOnlyVariable2PpiGuid, 0, NULL, (VOID **)&VariablePpi);
   ASSERT_EFI_ERROR(Status);
 
-  DEBUG((EFI_D_INFO, "Test PEI 1: Get PASSWORD_PRTECTED variable\n"));
+  DEBUG((EFI_D_INFO, "Test PEI 1: Get PASSWORD_PROTECT variable\n"));
   CopyMem(&GetDataInput, &mGetDataInput, sizeof(GetDataInput));
   DataSize = sizeof(GetDataInput);
   Attributes = EFI_VARIABLE_PASSWORD_PROTECTED;
@@ -133,7 +118,7 @@ PasswordProtectTest (
   ASSERT((Status == EFI_SUCCESS) || (Status == EFI_NOT_FOUND));
 
   if (Status == EFI_SUCCESS) {
-    DEBUG((EFI_D_INFO, "Test PEI 1.1: Get PASSWORD_PRTECTED variable data correct\n"));
+    DEBUG((EFI_D_INFO, "Test PEI 1.1: Get PASSWORD_PROTECT variable data correct\n"));
     GetDataOutput = (GET_VAR_PASSWORD_TEST_STRUCT *)&GetDataInput;
     ASSERT(Attributes == (EFI_VARIABLE_NON_VOLATILE |
                           EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -142,7 +127,7 @@ PasswordProtectTest (
     ASSERT(DataSize == sizeof(*GetDataOutput));
     ASSERT(CompareMem(GetDataOutput, &mGetData, sizeof(*GetDataOutput)) == 0);
 
-    DEBUG((EFI_D_INFO, "Test PEI 1.2: Get PASSWORD_PRTECTED variable data with wrong password\n"));
+    DEBUG((EFI_D_INFO, "Test PEI 1.2: Get PASSWORD_PROTECT variable data with wrong password\n"));
     CopyMem(&GetDataInput, &mGetWrongDataInput, sizeof(GetDataInput));
     DataSize = sizeof(GetDataInput);
     Attributes = EFI_VARIABLE_PASSWORD_PROTECTED;
@@ -158,8 +143,6 @@ PasswordProtectTest (
   }
 
   DEBUG((EFI_D_INFO, "##### PasswordProtectTest END #####\n"));
-
-  return;
 }
 
 /**
@@ -179,9 +162,9 @@ PeimMain(
   IN CONST EFI_PEI_SERVICES          **PeiServices
   )
 {
-  PasswordAuthTest(FileHandle, PeiServices);
+  PasswordAuthTest();
 
-  PasswordProtectTest(FileHandle, PeiServices);
+  PasswordProtectTest();
 
   return EFI_SUCCESS;
 }
