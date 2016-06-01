@@ -31,6 +31,13 @@ EDKII_VAR_CHECK_PROTOCOL            mVarCheck                  = { VarCheckRegis
                                                                     VarCheckVariablePropertySet,
                                                                     VarCheckVariablePropertyGet };
 
+EDKII_VARIABLE_EX_PROTOCOL          mVariableEx = {
+  VariableServiceGetVariableEx,
+  VariableServiceGetNextVariableNameEx,
+  VariableServiceSetVariableEx,
+  VariableServiceQueryVariableInfo
+};
+
 /**
   Return TRUE if ExitBootServices () has been called.
 
@@ -488,6 +495,14 @@ VariableServiceInitialize (
                   &gEfiVariableArchProtocolGuid,
                   EFI_NATIVE_INTERFACE,
                   NULL
+                  );
+  ASSERT_EFI_ERROR (Status);
+
+  Status = gBS->InstallProtocolInterface (
+                  &mHandle,
+                  &gEdkiiVariableExProtocolGuid,
+                  EFI_NATIVE_INTERFACE,
+                  &mVariableEx
                   );
   ASSERT_EFI_ERROR (Status);
 

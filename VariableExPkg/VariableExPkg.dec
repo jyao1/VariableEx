@@ -22,3 +22,19 @@
 
 [Includes]
   Include
+
+[LibraryClasses]
+  ##  @libraryclass  Provide password related function.
+  PasswordLib|Include/Library/PasswordLib.h
+
+[Ppis]
+  ## Include/Ppi/ReadOnlyVariable2Ex.h
+  gEdkiiPeiReadOnlyVariable2ExPpiGuid   = { 0xbec6925b, 0xd83d, 0x4dcc, { 0xb9, 0xe5, 0x6f, 0x26, 0x9, 0xc6, 0xa9, 0xe9 } }
+  
+[Protocols]
+  ## Include/Protocol/VariableEx.h
+  gEdkiiVariableExProtocolGuid          = { 0x5e0a3126, 0x1a63, 0x467a, { 0xa2, 0x27, 0xc5, 0x2e, 0xd0, 0xe1, 0xe4, 0xf } }
+
+  ## Include/Protocol/SmmVariableEx.h
+  gEdkiiSmmVariableExProtocolGuid       = { 0x996b9441, 0x1375, 0x48fb, { 0x8f, 0x7e, 0xec, 0x22, 0x39, 0xa2, 0x12, 0xa0 } }
+

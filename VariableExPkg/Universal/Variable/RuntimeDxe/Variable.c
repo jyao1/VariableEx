@@ -97,6 +97,8 @@ AUTH_VAR_LIB_CONTEXT_IN mAuthContextIn = {
 
 AUTH_VAR_LIB_CONTEXT_OUT mAuthContextOut;
 
+UINT8 mPendingAttributesEx;
+
 /**
 
   SecureBoot Hook for auth variable update.
@@ -647,8 +649,8 @@ UserDataSizeOfVariable (
   UINTN UserDataSize;
 
   UserDataSize = DataSizeOfVariable(Variable);
-  if (((Variable->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
     VARIABLE_PASSWORD_DATA_HEADER *DataHeader;
 
     ASSERT(UserDataSize > sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER));
@@ -767,8 +769,8 @@ GetVariableUserDataPtr (
   UINTN Value;
 
   Value =  (UINTN) GetVariableDataPtr (Variable);
-  if (((Variable->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
     Value += sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER);
   }
 
@@ -816,8 +818,8 @@ GetVariableUserDataOffset (
   UINTN Value;
 
   Value = GetVariableDataOffset (Variable);
-  if (((Variable->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
     Value += sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER);
   }
 
@@ -2310,6 +2312,42 @@ UpdateVariable (
   IN      EFI_TIME                    *TimeStamp      OPTIONAL
   )
 {
+  return UpdateVariableEx (VariableName, VendorGuid, Data, DataSize, Attributes, 0, KeyIndex, MonotonicCount, CacheVariable, TimeStamp);
+}
+
+/**
+  Update the variable region with Variable information. If EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS is set,
+  index of associated public key is needed.
+
+  @param[in] VariableName       Name of variable.
+  @param[in] VendorGuid         Guid of variable.
+  @param[in] Data               Variable data.
+  @param[in] DataSize           Size of data. 0 means delete.
+  @param[in] Attributes         Attributes of the variable.
+  @param[in] AttributesEx       AttributesEx of the variable.
+  @param[in] KeyIndex           Index of associated public key.
+  @param[in] MonotonicCount     Value of associated monotonic count.
+  @param[in, out] CacheVariable The variable information which is used to keep track of variable usage.
+  @param[in] TimeStamp          Value of associated TimeStamp.
+
+  @retval EFI_SUCCESS           The update operation is success.
+  @retval EFI_OUT_OF_RESOURCES  Variable region is full, can not write other data into this region.
+
+**/
+EFI_STATUS
+UpdateVariableEx (
+  IN      CHAR16                      *VariableName,
+  IN      EFI_GUID                    *VendorGuid,
+  IN      VOID                        *Data,
+  IN      UINTN                       DataSize,
+  IN      UINT32                      Attributes      OPTIONAL,
+  IN      UINT8                       AttributesEx    OPTIONAL,
+  IN      UINT32                      KeyIndex        OPTIONAL,
+  IN      UINT64                      MonotonicCount  OPTIONAL,
+  IN OUT  VARIABLE_POINTER_TRACK      *CacheVariable,
+  IN      EFI_TIME                    *TimeStamp      OPTIONAL
+  )
+{
   EFI_STATUS                          Status;
   VARIABLE_HEADER                     *NextVariable;
   UINTN                               ScratchSize;
@@ -2623,7 +2661,7 @@ UpdateVariable (
   //
   // NextVariable->State = VAR_ADDED;
   //
-  NextVariable->Reserved        = 0;
+  ((VARIABLE_HEADER_EX *)NextVariable)->AttributesEx = AttributesEx;
   if (mVariableModuleGlobal->VariableGlobal.AuthFormat) {
     AuthVariable = (AUTHENTICATED_VARIABLE_HEADER *) NextVariable;
     AuthVariable->PubKeyIndex    = KeyIndex;
@@ -2978,6 +3016,43 @@ VariableServiceGetVariable (
   OUT     VOID              *Data OPTIONAL
   )
 {
+  return VariableServiceGetVariableEx (VariableName, VendorGuid, Attributes, NULL, DataSize, Data);
+}
+
+/**
+
+  This code finds variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize is external input.
+  This function will do basic validation, before parse the data.
+
+  @param VariableName               Name of Variable to be found.
+  @param VendorGuid                 Variable vendor GUID.
+  @param Attributes                 Attribute value of the variable found.
+  @param AttributesEx               AttributeEx value of the variable found.
+  @param DataSize                   Size of Data found. If size is less than the
+                                    data, this value contains the required size.
+  @param Data                       The buffer to return the contents of the variable. May be NULL
+                                    with a zero DataSize in order to determine the size buffer needed.
+
+  @return EFI_INVALID_PARAMETER     Invalid parameter.
+  @return EFI_SUCCESS               Find the specified variable.
+  @return EFI_NOT_FOUND             Not found.
+  @return EFI_BUFFER_TO_SMALL       DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceGetVariableEx (
+  IN      CHAR16            *VariableName,
+  IN      EFI_GUID          *VendorGuid,
+  OUT     UINT32            *Attributes OPTIONAL,
+  IN OUT  UINT8             *AttributesEx OPTIONAL,
+  IN OUT  UINTN             *DataSize,
+  OUT     VOID              *Data OPTIONAL
+  )
+{
   EFI_STATUS              Status;
   VARIABLE_POINTER_TRACK  Variable;
   UINTN                   VarDataSize;
@@ -3009,23 +3084,27 @@ VariableServiceGetVariable (
       goto Done;
     }
 
-    if ((Variable.CurrPtr->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) == 0) {
+    if ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0) {
       CopyMem (Data, GetVariableUserDataPtr (Variable.CurrPtr), VarDataSize);
     } else {
       UINTN                         EncVarDataSize;
-      EFI_VARIABLE_PASSWORD_DATA    *PasswordData;
+      EDKII_VARIABLE_PASSWORD_DATA  *PasswordData;
       VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
       VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
       BOOLEAN                       Result;
 
-      DEBUG((EFI_D_INFO, "Get EFI_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, &VendorGuid));
+      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, &VendorGuid));
 
-      if (*DataSize < sizeof(EFI_VARIABLE_PASSWORD_DATA)) {
+      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0)) {
+        return EFI_INVALID_PARAMETER;
+      }
+
+      if (*DataSize < sizeof(EDKII_VARIABLE_PASSWORD_DATA)) {
         Status = EFI_INVALID_PARAMETER;
         goto Done;
       }
       PasswordData = Data;
-      if (*DataSize - sizeof(EFI_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
+      if (*DataSize - sizeof(EDKII_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
         Status = EFI_INVALID_PARAMETER;
         goto Done;
       }
@@ -3102,6 +3181,9 @@ VariableServiceGetVariable (
     }
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
+    }
+    if (AttributesEx != NULL) {
+      *AttributesEx = ((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx;
     }
 
     *DataSize = VarDataSize;
@@ -3289,6 +3371,38 @@ VariableServiceGetNextVariableName (
   IN OUT  EFI_GUID          *VendorGuid
   )
 {
+  return VariableServiceGetNextVariableNameEx (VariableNameSize, VariableName, VendorGuid, NULL, NULL);
+}
+
+/**
+
+  This code Finds the Next available variable.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
+
+  @param VariableNameSize           Size of the variable name.
+  @param VariableName               Pointer to variable name.
+  @param VendorGuid                 Variable Vendor Guid.
+  @param Attributes                 Attribute value of the variable found
+  @param AttributesEx               AttributeEx value of the variable found
+
+  @return EFI_INVALID_PARAMETER     Invalid parameter.
+  @return EFI_SUCCESS               Find the specified variable.
+  @return EFI_NOT_FOUND             Not found.
+  @return EFI_BUFFER_TO_SMALL       DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceGetNextVariableNameEx (
+  IN OUT  UINTN             *VariableNameSize,
+  IN OUT  CHAR16            *VariableName,
+  IN OUT  EFI_GUID          *VendorGuid,
+  OUT     UINT32            *Attributes OPTIONAL,
+  OUT     UINT8             *AttributesEx OPTIONAL
+  )
+{
   EFI_STATUS              Status;
   UINTN                   VarNameSize;
   VARIABLE_HEADER         *VariablePtr;
@@ -3312,6 +3426,12 @@ VariableServiceGetNextVariableName (
     }
 
     *VariableNameSize = VarNameSize;
+    if (Attributes != NULL) {
+      *Attributes = VariablePtr->Attributes;
+    }
+    if (AttributesEx != NULL) {
+      *AttributesEx = ((VARIABLE_HEADER_EX *)VariablePtr)->AttributesEx;
+    }
   }
 
   ReleaseLockOnlyAtBootTime (&mVariableModuleGlobal->VariableGlobal.VariableServicesLock);
@@ -3349,6 +3469,46 @@ VariableServiceSetVariable (
   IN CHAR16                  *VariableName,
   IN EFI_GUID                *VendorGuid,
   IN UINT32                  Attributes,
+  IN UINTN                   DataSize,
+  IN VOID                    *Data
+  )
+{
+  return VariableServiceSetVariableEx (VariableName, VendorGuid, Attributes, 0, DataSize, Data);
+}
+
+/**
+
+  This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
+
+  @param VariableName                     Name of Variable to be found.
+  @param VendorGuid                       Variable vendor GUID.
+  @param Attributes                       Attribute value of the variable found
+  @param AttributesEx                     AttributeEx value of the variable found
+  @param DataSize                         Size of Data found. If size is less than the
+                                          data, this value contains the required size.
+  @param Data                             Data pointer.
+
+  @return EFI_INVALID_PARAMETER           Invalid parameter.
+  @return EFI_SUCCESS                     Set successfully.
+  @return EFI_OUT_OF_RESOURCES            Resource not enough to set variable.
+  @return EFI_NOT_FOUND                   Not found.
+  @return EFI_WRITE_PROTECTED             Variable is read-only.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceSetVariableEx (
+  IN CHAR16                  *VariableName,
+  IN EFI_GUID                *VendorGuid,
+  IN UINT32                  Attributes,
+  IN UINT8                   AttributesEx,
   IN UINTN                   DataSize,
   IN VOID                    *Data
   )
@@ -3519,6 +3679,11 @@ VariableServiceSetVariable (
       DEBUG ((EFI_D_INFO, "[Variable]: Rewritten a preexisting variable(0x%08x) with different attributes(0x%08x) - %g:%s\n", Variable.CurrPtr->Attributes, Attributes, VendorGuid, VariableName));
       goto Done;
     }
+    if (AttributesEx != ((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx) {
+      Status = EFI_INVALID_PARAMETER;
+      DEBUG ((EFI_D_INFO, "[Variable]: Rewritten a preexisting variable(0x%02x) with different AttributesEx(0x%02x) - %g:%s\n", ((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx, AttributesEx, VendorGuid, VariableName));
+      goto Done;
+    }
   }
 
   if (!FeaturePcdGet (PcdUefiVariableDefaultLangDeprecate)) {
@@ -3534,14 +3699,15 @@ VariableServiceSetVariable (
     }
   }
 
-  if (((Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable.CurrPtr != NULL) && ((Variable.CurrPtr->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0)) ||
-      ((Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ||
-      ((Variable.CurrPtr != NULL) && ((Variable.CurrPtr->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
+  mPendingAttributesEx = 0;
+  if (((AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0)) ||
+      ((AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ||
+      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
     VOID                          *RawData;
     UINTN                         RawDataSize;
     UINTN                         EncRawDataSize;
-    EFI_VARIABLE_PASSWORD_DATA    *PasswordData;
+    EDKII_VARIABLE_PASSWORD_DATA    *PasswordData;
     UINTN                         PasswordDataSize;
     VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
     VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
@@ -3549,25 +3715,25 @@ VariableServiceSetVariable (
     BOOLEAN                       Result;
     BOOLEAN                       PasswordProtected;
 
-    if (((Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ||
-        ((Variable.CurrPtr != NULL) && ((Variable.CurrPtr->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
+    if (((AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ||
+        ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
       PasswordProtected = TRUE;
     } else {
       PasswordProtected = FALSE;
     }
 
     if (PasswordProtected) {
-      DEBUG((EFI_D_INFO, "EFI_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, VendorGuid));
+      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, VendorGuid));
     } else {
-      DEBUG((EFI_D_INFO, "EFI_VARIABLE_PASSWORD_AUTHENTICATED - %S(%g)\n", VariableName, VendorGuid));
+      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_PASSWORD_AUTHENTICATED - %S(%g)\n", VariableName, VendorGuid));
     }
 
-    if (DataSize < sizeof(EFI_VARIABLE_PASSWORD_DATA)) {
+    if (DataSize < sizeof(EDKII_VARIABLE_PASSWORD_DATA)) {
       Status = EFI_INVALID_PARAMETER;
       goto Done;
     }
     PasswordData = Data;
-    if (DataSize - sizeof(EFI_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
+    if (DataSize - sizeof(EDKII_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
       Status = EFI_INVALID_PARAMETER;
       goto Done;
     }
@@ -3575,7 +3741,7 @@ VariableServiceSetVariable (
     //
     // Update Data and DataSize
     //
-    PasswordDataSize = sizeof(EFI_VARIABLE_PASSWORD_DATA) + PasswordData->PasswordSize;
+    PasswordDataSize = sizeof(EDKII_VARIABLE_PASSWORD_DATA) + PasswordData->PasswordSize;
 
     RawData = (VOID *)((UINTN)Data + PasswordDataSize);
     RawDataSize = DataSize - PasswordDataSize;
@@ -3718,13 +3884,15 @@ VariableServiceSetVariable (
       Data = NULL;
       DataSize = 0;
     }
+	mPendingAttributesEx = AttributesEx;
   }
 
   if (mVariableModuleGlobal->VariableGlobal.AuthSupport) {
     Status = AuthVariableLibProcessVariable (VariableName, VendorGuid, Data, DataSize, Attributes);
   } else {
-    Status = UpdateVariable (VariableName, VendorGuid, Data, DataSize, Attributes, 0, 0, &Variable, NULL);
+    Status = UpdateVariableEx (VariableName, VendorGuid, Data, DataSize, Attributes, AttributesEx, 0, 0, &Variable, NULL);
   }
+  mPendingAttributesEx = 0;
 
 Done:
   InterlockedDecrement (&mVariableModuleGlobal->VariableGlobal.ReentrantState);

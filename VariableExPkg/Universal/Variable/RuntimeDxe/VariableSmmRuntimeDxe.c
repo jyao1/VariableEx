@@ -26,10 +26,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <PiDxe.h>
 #include <Protocol/VariableWrite.h>
 #include <Protocol/Variable.h>
+#include <Protocol/VariableEx.h>
 #include <Protocol/SmmCommunication.h>
 #include <Protocol/SmmVariable.h>
+#include <Protocol/SmmVariableEx.h>
 #include <Protocol/VariableLock.h>
 #include <Protocol/VarCheck.h>
+#include <Protocol/VariableEx.h>
 
 #include <Library/UefiBootServicesTableLib.h>
 #include <Library/UefiRuntimeServicesTableLib.h>
@@ -43,8 +46,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Guid/EventGroup.h>
 #include <Guid/SmmVariableCommon.h>
-
-#include <Uefi/UefiMultiPhaseEx.h>
+#include <Guid/SmmVariableCommonEx.h>
 
 EFI_HANDLE                       mHandle                    = NULL;
 EFI_SMM_VARIABLE_PROTOCOL       *mSmmVariable               = NULL;
@@ -71,6 +73,127 @@ SecureBootHook (
   IN CHAR16                                 *VariableName,
   IN EFI_GUID                               *VendorGuid
   );
+
+/**
+  This code finds variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  The data size is external input, so this function will validate it carefully to avoid buffer overflow.
+
+  @param[in]      VariableName       Name of Variable to be found.
+  @param[in]      VendorGuid         Variable vendor GUID.
+  @param[out]     Attributes         Attribute value of the variable found.
+  @param[out]     AttributesEx       AttributeEx value of the variable found.
+  @param[in, out] DataSize           Size of Data found. If size is less than the
+                                     data, this value contains the required size.
+  @param[out]     Data               Data pointer.
+
+  @retval EFI_INVALID_PARAMETER      Invalid parameter.
+  @retval EFI_SUCCESS                Find the specified variable.
+  @retval EFI_NOT_FOUND              Not found.
+  @retval EFI_BUFFER_TO_SMALL        DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceGetVariableEx (
+  IN      CHAR16                            *VariableName,
+  IN      EFI_GUID                          *VendorGuid,
+  OUT     UINT32                            *Attributes OPTIONAL,
+  IN OUT  UINT8                             *AttributesEx OPTIONAL,
+  IN OUT  UINTN                             *DataSize,
+  OUT     VOID                              *Data
+  );
+
+/**
+  This code Finds the Next available variable.
+
+  @param[in, out] VariableNameSize   Size of the variable name.
+  @param[in, out] VariableName       Pointer to variable name.
+  @param[in, out] VendorGuid         Variable Vendor Guid.
+  @param[out]     Attributes         Attribute value of the variable found
+  @param[out]     AttributesEx       AttributeEx value of the variable found
+
+  @retval EFI_INVALID_PARAMETER      Invalid parameter.
+  @retval EFI_SUCCESS                Find the specified variable.
+  @retval EFI_NOT_FOUND              Not found.
+  @retval EFI_BUFFER_TO_SMALL        DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceGetNextVariableNameEx (
+  IN OUT  UINTN                             *VariableNameSize,
+  IN OUT  CHAR16                            *VariableName,
+  IN OUT  EFI_GUID                          *VendorGuid,
+  OUT     UINT32                            *Attributes OPTIONAL,
+  OUT     UINT8                             *AttributesEx OPTIONAL
+  );
+
+/**
+  This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  The data size and data are external input, so this function will validate it carefully to avoid buffer overflow.
+
+  @param[in] VariableName                 Name of Variable to be found.
+  @param[in] VendorGuid                   Variable vendor GUID.
+  @param[in] Attributes                   Attribute value of the variable found
+  @param[in] AttributesEx                 AttributeEx value of the variable found
+  @param[in] DataSize                     Size of Data found. If size is less than the
+                                          data, this value contains the required size.
+  @param[in] Data                         Data pointer.
+
+  @retval EFI_INVALID_PARAMETER           Invalid parameter.
+  @retval EFI_SUCCESS                     Set successfully.
+  @retval EFI_OUT_OF_RESOURCES            Resource not enough to set variable.
+  @retval EFI_NOT_FOUND                   Not found.
+  @retval EFI_WRITE_PROTECTED             Variable is read-only.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceSetVariableEx (
+  IN CHAR16                                 *VariableName,
+  IN EFI_GUID                               *VendorGuid,
+  IN UINT32                                 Attributes,
+  IN UINT8                                  AttributesEx,
+  IN UINTN                                  DataSize,
+  IN VOID                                   *Data
+  );
+
+/**
+  This code returns information about the EFI variables.
+
+  @param[in]  Attributes                   Attributes bitmask to specify the type of variables
+                                           on which to return information.
+  @param[out] MaximumVariableStorageSize   Pointer to the maximum size of the storage space available
+                                           for the EFI variables associated with the attributes specified.
+  @param[out] RemainingVariableStorageSize Pointer to the remaining size of the storage space available
+                                           for EFI variables associated with the attributes specified.
+  @param[out] MaximumVariableSize          Pointer to the maximum size of an individual EFI variables
+                                           associated with the attributes specified.
+
+  @retval EFI_INVALID_PARAMETER            An invalid combination of attribute bits was supplied.
+  @retval EFI_SUCCESS                      Query successfully.
+  @retval EFI_UNSUPPORTED                  The attribute is not supported on this platform.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceQueryVariableInfo (
+  IN  UINT32                                Attributes,
+  OUT UINT64                                *MaximumVariableStorageSize,
+  OUT UINT64                                *RemainingVariableStorageSize,
+  OUT UINT64                                *MaximumVariableSize
+  );
+
+EDKII_VARIABLE_EX_PROTOCOL          mVariableEx = {
+  RuntimeServiceGetVariableEx,
+  RuntimeServiceGetNextVariableNameEx,
+  RuntimeServiceSetVariableEx,
+  RuntimeServiceQueryVariableInfo
+};
 
 /**
   Acquires lock only at boot time. Simply returns at runtime.
@@ -462,11 +585,46 @@ RuntimeServiceGetVariable (
   OUT     VOID                              *Data
   )
 {
-  EFI_STATUS                                Status;
-  UINTN                                     PayloadSize;
-  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE  *SmmVariableHeader;
-  UINTN                                     TempDataSize;
-  UINTN                                     VariableNameSize;
+  return RuntimeServiceGetVariableEx (VariableName, VendorGuid, Attributes, NULL, DataSize, Data);
+}
+
+/**
+  This code finds variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  The data size is external input, so this function will validate it carefully to avoid buffer overflow.
+
+  @param[in]      VariableName       Name of Variable to be found.
+  @param[in]      VendorGuid         Variable vendor GUID.
+  @param[out]     Attributes         Attribute value of the variable found.
+  @param[out]     AttributesEx       AttributeEx value of the variable found.
+  @param[in, out] DataSize           Size of Data found. If size is less than the
+                                     data, this value contains the required size.
+  @param[out]     Data               Data pointer.
+
+  @retval EFI_INVALID_PARAMETER      Invalid parameter.
+  @retval EFI_SUCCESS                Find the specified variable.
+  @retval EFI_NOT_FOUND              Not found.
+  @retval EFI_BUFFER_TO_SMALL        DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceGetVariableEx (
+  IN      CHAR16                            *VariableName,
+  IN      EFI_GUID                          *VendorGuid,
+  OUT     UINT32                            *Attributes OPTIONAL,
+  IN OUT  UINT8                             *AttributesEx OPTIONAL,
+  IN OUT  UINTN                             *DataSize,
+  OUT     VOID                              *Data
+  )
+{
+  EFI_STATUS                                   Status;
+  UINTN                                        PayloadSize;
+  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX  *SmmVariableHeader;
+  UINTN                                        TempDataSize;
+  UINTN                                        VariableNameSize;
+  BOOLEAN                                      IsProtected;
 
   if (VariableName == NULL || VendorGuid == NULL || DataSize == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -476,14 +634,20 @@ RuntimeServiceGetVariable (
   VariableNameSize      = StrSize (VariableName);
   SmmVariableHeader     = NULL;
 
+  if ((AttributesEx != NULL) && ((*AttributesEx) & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) {
+    IsProtected = TRUE;
+  } else {
+    IsProtected = FALSE;
+  }
+
   //
   // If VariableName exceeds SMM payload limit. Return failure
   //
-  if (VariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) {
+  if (VariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) {
     return EFI_INVALID_PARAMETER;
   }
-  if ((Attributes != NULL) && ((*Attributes) & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) {
-    if (*DataSize > mVariableBufferPayloadSize - OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) - VariableNameSize) {
+  if (IsProtected) {
+    if (*DataSize > mVariableBufferPayloadSize - OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize) {
       return EFI_INVALID_PARAMETER;
     }
   }
@@ -494,18 +658,18 @@ RuntimeServiceGetVariable (
   // Init the communicate buffer. The buffer data size is:
   // SMM_COMMUNICATE_HEADER_SIZE + SMM_VARIABLE_COMMUNICATE_HEADER_SIZE + PayloadSize.
   //
-  if (TempDataSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) - VariableNameSize) {
+  if (TempDataSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize) {
     //
     // If output data buffer exceed SMM payload limit. Trim output buffer to SMM payload size
     //
-    TempDataSize = mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) - VariableNameSize;
+    TempDataSize = mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize;
   }
-  if ((Attributes != NULL) && ((*Attributes) & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) {
+  if (IsProtected) {
     TempDataSize = *DataSize;
   }
-  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) + VariableNameSize + TempDataSize;
+  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) + VariableNameSize + TempDataSize;
 
-  Status = InitCommunicateBuffer ((VOID **)&SmmVariableHeader, PayloadSize, SMM_VARIABLE_FUNCTION_GET_VARIABLE);
+  Status = InitCommunicateBuffer ((VOID **)&SmmVariableHeader, PayloadSize, SMM_VARIABLE_FUNCTION_GET_VARIABLE_EX);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -519,8 +683,13 @@ RuntimeServiceGetVariable (
   } else {
     SmmVariableHeader->Attributes = *Attributes;
   }
+  if (AttributesEx == NULL) {
+    SmmVariableHeader->AttributesEx = 0;
+  } else {
+    SmmVariableHeader->AttributesEx = *AttributesEx;
+  }
   CopyMem (SmmVariableHeader->Name, VariableName, SmmVariableHeader->NameSize);
-  if ((Attributes != NULL) && ((*Attributes) & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) {
+  if (IsProtected) {
     CopyMem((UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize, Data, *DataSize);
   }
 
@@ -541,6 +710,9 @@ RuntimeServiceGetVariable (
   }
   if (Attributes != NULL) {
     *Attributes = SmmVariableHeader->Attributes;
+  }
+  if (AttributesEx != NULL) {
+    *AttributesEx = SmmVariableHeader->AttributesEx;
   }
 
   if (EFI_ERROR (Status)) {
@@ -581,11 +753,39 @@ RuntimeServiceGetNextVariableName (
   IN OUT  EFI_GUID                          *VendorGuid
   )
 {
-  EFI_STATUS                                      Status;
-  UINTN                                           PayloadSize;
-  SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME *SmmGetNextVariableName;
-  UINTN                                           OutVariableNameSize;
-  UINTN                                           InVariableNameSize;
+  return RuntimeServiceGetNextVariableNameEx (VariableNameSize, VariableName, VendorGuid, NULL, NULL);
+}
+
+/**
+  This code Finds the Next available variable.
+
+  @param[in, out] VariableNameSize   Size of the variable name.
+  @param[in, out] VariableName       Pointer to variable name.
+  @param[in, out] VendorGuid         Variable Vendor Guid.
+  @param[out]     Attributes         Attribute value of the variable found
+  @param[out]     AttributesEx       AttributeEx value of the variable found
+
+  @retval EFI_INVALID_PARAMETER      Invalid parameter.
+  @retval EFI_SUCCESS                Find the specified variable.
+  @retval EFI_NOT_FOUND              Not found.
+  @retval EFI_BUFFER_TO_SMALL        DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceGetNextVariableNameEx (
+  IN OUT  UINTN                             *VariableNameSize,
+  IN OUT  CHAR16                            *VariableName,
+  IN OUT  EFI_GUID                          *VendorGuid,
+  OUT     UINT32                            *Attributes OPTIONAL,
+  OUT     UINT8                             *AttributesEx OPTIONAL
+  )
+{
+  EFI_STATUS                                         Status;
+  UINTN                                              PayloadSize;
+  SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX *SmmGetNextVariableName;
+  UINTN                                              OutVariableNameSize;
+  UINTN                                              InVariableNameSize;
 
   if (VariableNameSize == NULL || VariableName == NULL || VendorGuid == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -598,7 +798,7 @@ RuntimeServiceGetNextVariableName (
   //
   // If input string exceeds SMM payload limit. Return failure
   //
-  if (InVariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name)) {
+  if (InVariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name)) {
     return EFI_INVALID_PARAMETER;
   }
 
@@ -608,18 +808,18 @@ RuntimeServiceGetNextVariableName (
   // Init the communicate buffer. The buffer data size is:
   // SMM_COMMUNICATE_HEADER_SIZE + SMM_VARIABLE_COMMUNICATE_HEADER_SIZE + PayloadSize.
   //
-  if (OutVariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name)) {
+  if (OutVariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name)) {
     //
     // If output buffer exceed SMM payload limit. Trim output buffer to SMM payload size
     //
-    OutVariableNameSize = mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name);
+    OutVariableNameSize = mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name);
   }
   //
   // Payload should be Guid + NameSize + MAX of Input & Output buffer
   //
-  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name) + MAX (OutVariableNameSize, InVariableNameSize);
+  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name) + MAX (OutVariableNameSize, InVariableNameSize);
 
-  Status = InitCommunicateBuffer ((VOID **)&SmmGetNextVariableName, PayloadSize, SMM_VARIABLE_FUNCTION_GET_NEXT_VARIABLE_NAME);
+  Status = InitCommunicateBuffer ((VOID **)&SmmGetNextVariableName, PayloadSize, SMM_VARIABLE_FUNCTION_GET_NEXT_VARIABLE_NAME_EX);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -629,6 +829,16 @@ RuntimeServiceGetNextVariableName (
   // SMM comm buffer->NameSize is buffer size for return string
   //
   SmmGetNextVariableName->NameSize = OutVariableNameSize;
+  if (Attributes == NULL) {
+    SmmGetNextVariableName->Attributes = 0;
+  } else {
+    SmmGetNextVariableName->Attributes = *Attributes;
+  }
+  if (AttributesEx == NULL) {
+    SmmGetNextVariableName->AttributesEx = 0;
+  } else {
+    SmmGetNextVariableName->AttributesEx = *AttributesEx;
+  }
 
   CopyGuid (&SmmGetNextVariableName->Guid, VendorGuid);
   //
@@ -660,6 +870,12 @@ RuntimeServiceGetNextVariableName (
 
   CopyGuid (VendorGuid, &SmmGetNextVariableName->Guid);
   CopyMem (VariableName, SmmGetNextVariableName->Name, SmmGetNextVariableName->NameSize);
+  if (Attributes != NULL) {
+    *Attributes = SmmGetNextVariableName->Attributes;
+  }
+  if (AttributesEx != NULL) {
+    *AttributesEx = SmmGetNextVariableName->AttributesEx;
+  }
 
 Done:
   ReleaseLockOnlyAtBootTime (&mVariableServicesLock);
@@ -696,10 +912,45 @@ RuntimeServiceSetVariable (
   IN VOID                                   *Data
   )
 {
-  EFI_STATUS                                Status;
-  UINTN                                     PayloadSize;
-  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE  *SmmVariableHeader;
-  UINTN                                     VariableNameSize;
+  return RuntimeServiceSetVariableEx (VariableName, VendorGuid, Attributes, 0, DataSize, Data);
+}
+
+/**
+  This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  The data size and data are external input, so this function will validate it carefully to avoid buffer overflow.
+
+  @param[in] VariableName                 Name of Variable to be found.
+  @param[in] VendorGuid                   Variable vendor GUID.
+  @param[in] Attributes                   Attribute value of the variable found
+  @param[in] AttributesEx                 AttributeEx value of the variable found
+  @param[in] DataSize                     Size of Data found. If size is less than the
+                                          data, this value contains the required size.
+  @param[in] Data                         Data pointer.
+
+  @retval EFI_INVALID_PARAMETER           Invalid parameter.
+  @retval EFI_SUCCESS                     Set successfully.
+  @retval EFI_OUT_OF_RESOURCES            Resource not enough to set variable.
+  @retval EFI_NOT_FOUND                   Not found.
+  @retval EFI_WRITE_PROTECTED             Variable is read-only.
+
+**/
+EFI_STATUS
+EFIAPI
+RuntimeServiceSetVariableEx (
+  IN CHAR16                                 *VariableName,
+  IN EFI_GUID                               *VendorGuid,
+  IN UINT32                                 Attributes,
+  IN UINT8                                  AttributesEx,
+  IN UINTN                                  DataSize,
+  IN VOID                                   *Data
+  )
+{
+  EFI_STATUS                                   Status;
+  UINTN                                        PayloadSize;
+  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX  *SmmVariableHeader;
+  UINTN                                        VariableNameSize;
 
   //
   // Check input parameters.
@@ -718,8 +969,8 @@ RuntimeServiceSetVariable (
   //
   // If VariableName or DataSize exceeds SMM payload limit. Return failure
   //
-  if ((VariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) ||
-      (DataSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) - VariableNameSize)){
+  if ((VariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) ||
+      (DataSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize)){
     return EFI_INVALID_PARAMETER;
   }
 
@@ -729,8 +980,8 @@ RuntimeServiceSetVariable (
   // Init the communicate buffer. The buffer data size is:
   // SMM_COMMUNICATE_HEADER_SIZE + SMM_VARIABLE_COMMUNICATE_HEADER_SIZE + PayloadSize.
   //
-  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) + VariableNameSize + DataSize;
-  Status = InitCommunicateBuffer ((VOID **)&SmmVariableHeader, PayloadSize, SMM_VARIABLE_FUNCTION_SET_VARIABLE);
+  PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) + VariableNameSize + DataSize;
+  Status = InitCommunicateBuffer ((VOID **)&SmmVariableHeader, PayloadSize, SMM_VARIABLE_FUNCTION_SET_VARIABLE_EX);
   if (EFI_ERROR (Status)) {
     goto Done;
   }
@@ -740,6 +991,7 @@ RuntimeServiceSetVariable (
   SmmVariableHeader->DataSize   = DataSize;
   SmmVariableHeader->NameSize   = VariableNameSize;
   SmmVariableHeader->Attributes = Attributes;
+  SmmVariableHeader->AttributesEx = AttributesEx;
   CopyMem (SmmVariableHeader->Name, VariableName, SmmVariableHeader->NameSize);
   CopyMem ((UINT8 *) SmmVariableHeader->Name + SmmVariableHeader->NameSize, Data, DataSize);
 
@@ -1042,6 +1294,14 @@ SmmVariableReady (
                   &gEfiVariableArchProtocolGuid,
                   EFI_NATIVE_INTERFACE,
                   NULL
+                  );
+  ASSERT_EFI_ERROR (Status);
+  
+  Status = gBS->InstallProtocolInterface (
+                  &mHandle,
+                  &gEdkiiVariableExProtocolGuid,
+                  EFI_NATIVE_INTERFACE,
+                  &mVariableEx
                   );
   ASSERT_EFI_ERROR (Status);
 

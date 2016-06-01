@@ -14,6 +14,89 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #ifndef __VARIABLE_FORMAT_EX_H__
 #define __VARIABLE_FORMAT_EX_H__
 
+#pragma pack(1)
+
+///
+/// Single Variable Data Header Structure.
+///
+typedef struct {
+  ///
+  /// Variable Data Start Flag.
+  ///
+  UINT16      StartId;
+  ///
+  /// Variable State defined above.
+  ///
+  UINT8       State;
+  ///
+  /// Attributes Extension of variable
+  ///
+  UINT8       AttributesEx;
+  ///
+  /// Attributes of variable defined in UEFI specification.
+  ///
+  UINT32      Attributes;
+  ///
+  /// Size of variable null-terminated Unicode string name.
+  ///
+  UINT32      NameSize;
+  ///
+  /// Size of the variable data without this header.
+  ///
+  UINT32      DataSize;
+  ///
+  /// A unique identifier for the vendor that produces and consumes this varaible.
+  ///
+  EFI_GUID    VendorGuid;
+} VARIABLE_HEADER_EX;
+
+///
+/// Single Authenticated Variable Data Header Structure.
+///
+typedef struct {
+  ///
+  /// Variable Data Start Flag.
+  ///
+  UINT16      StartId;
+  ///
+  /// Variable State defined above.
+  ///
+  UINT8       State;
+  ///
+  /// Attributes Extension of variable
+  ///
+  UINT8       AttributesEx;
+  ///
+  /// Attributes of variable defined in UEFI specification.
+  ///
+  UINT32      Attributes;
+  ///
+  /// Associated monotonic count value against replay attack.
+  ///
+  UINT64      MonotonicCount;
+  ///
+  /// Associated TimeStamp value against replay attack.
+  ///
+  EFI_TIME    TimeStamp;
+  ///
+  /// Index of associated public key in database.
+  ///
+  UINT32      PubKeyIndex;
+  ///
+  /// Size of variable null-terminated Unicode string name.
+  ///
+  UINT32      NameSize;
+  ///
+  /// Size of the variable data without this header.
+  ///
+  UINT32      DataSize;
+  ///
+  /// A unique identifier for the vendor that produces and consumes this varaible.
+  ///
+  EFI_GUID    VendorGuid;
+} AUTHENTICATED_VARIABLE_HEADER_EX;
+
+
 //
 // EDKII Variable driver extension for variable storage
 //
@@ -38,7 +121,7 @@ typedef struct {
 } VARIABLE_PASSWORD_DATA_HEADER;
 
 //
-// If EFI_VARIABLE_PASSWORD_AUTHENTICATED is set, the binary layout is:
+// If EDKII_VARIABLE_PASSWORD_AUTHENTICATED is set, the binary layout is:
 // +--------------------------------+
 // | (AUTHENTICATED_)VARIABLE_HEADER |
 // +--------------------------------+
@@ -53,7 +136,7 @@ typedef struct {
 //
 
 //
-// If EFI_VARIABLE_PASSWORD_PROTECTED is set, the binary layout is:
+// If EDKII_VARIABLE_PASSWORD_PROTECTED is set, the binary layout is:
 // +--------------------------------+
 // | (AUTHENTICATED_)VARIABLE_HEADER |
 // +--------------------------------+
@@ -66,5 +149,7 @@ typedef struct {
 // |                                 |      |   UserData (Cypher Text)       |
 // +--------------------------------+ ---> +--------------------------------+
 //
+
+#pragma pack()
 
 #endif

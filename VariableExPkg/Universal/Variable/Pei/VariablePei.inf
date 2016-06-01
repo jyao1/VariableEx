@@ -65,6 +65,7 @@
 
 [Ppis]
   gEfiPeiReadOnlyVariable2PpiGuid   ## PRODUCES
+  gEdkiiPeiReadOnlyVariable2ExPpiGuid   ## PRODUCES
 
 [Pcd]
   gEfiMdeModulePkgTokenSpaceGuid.PcdFlashNvStorageVariableBase      ## SOMETIMES_CONSUMES

@@ -86,6 +86,7 @@
   gEfiSmmVariableProtocolGuid
   gEfiSmmEndOfDxeProtocolGuid                   ## NOTIFY
   gEdkiiSmmVarCheckProtocolGuid                 ## PRODUCES
+  gEdkiiSmmVariableExProtocolGuid               ## PRODUCES
 
 [Guids]
   ## SOMETIMES_CONSUMES   ## GUID # Signature of Variable store header

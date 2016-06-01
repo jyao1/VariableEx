@@ -12,10 +12,11 @@ Just build it as a normal EDKII package.
   3) type "build -p VariableExPkg\VariableExPkg.dsc -a IA32 -a X64 -t VS2015x86"
 
 ## Feature:
-1) UEFI specification extension: (VariableExPkg\Include\Uefi\UefiMultiPhaseEx.h)
-2 more attributes are added:
-EFI_VARIABLE_PASSWORD_AUTHENTICATED attribute is for the password-based integrity.
-EFI_VARIABLE_PASSWORD_PROTECTED attribute is for the password-based confidentiality.
+1) EDKII Variable Ppi/Protocol extension: (VariableExPkg\Include\Ppi\ReadOnlyVariable2Ex.h,
+VariableExPkg\Include\Protocol\VariableEx.h, VariableExPkg\Include\Protocol\SmmVariableEx.h)
+Below attributes extension is added:
+  EDKII_VARIABLE_PASSWORD_AUTHENTICATED is for the password-based integrity.
+  EDKII_VARIABLE_PASSWORD_PROTECTED is for the password-based confidentiality.
 
 2) EDKII Variable Storage extension: (VariableExPkg\Include\Guid\VariableFormatEx.h) 
 The variable storage is updated to support the password based HASH and data encryption.

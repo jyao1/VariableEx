@@ -13,13 +13,12 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 
 #include <PiPei.h>
-#include <Ppi/ReadOnlyVariable2.h>
+#include <Ppi/ReadOnlyVariable2Ex.h>
 
 #include <Library/DebugLib.h>
 #include <Library/BaseMemoryLib.h>
 #include <Library/PeiServicesTablePointerLib.h>
 #include <Library/PeiServicesLib.h>
-#include <Uefi/UefiMultiPhaseEx.h>
 
 #include "VariablePasswordTestCommon.h"
 
@@ -30,41 +29,43 @@ GET_VAR_PASSWORD_TEST_STRUCT  mGetData = {
 };
 
 GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  mGetDataInput = {
-  { EFI_VARIABLE_PASSWORD_TYPE_ASCII, PASSWORD_SIZE },
+  { EDKII_VARIABLE_PASSWORD_TYPE_ASCII, PASSWORD_SIZE },
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38 },
 };
 
 GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
-  { EFI_VARIABLE_PASSWORD_TYPE_ASCII, PASSWORD_SIZE },
+  { EDKII_VARIABLE_PASSWORD_TYPE_ASCII, PASSWORD_SIZE },
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39 },
 };
 
 /**
-  Unit test for EFI_VARIABLE_PASSWORD_AUTHENTICATED.
+  Unit test for EDKII_VARIABLE_PASSWORD_AUTHENTICATED.
 **/
 VOID
 PasswordAuthTest (
   VOID
   )
 {
-  EFI_PEI_READ_ONLY_VARIABLE2_PPI *VariablePpi;
-  EFI_STATUS                      Status;
-  GET_VAR_PASSWORD_TEST_STRUCT    GetData;
-  UINTN                           DataSize;
-  UINT32                          Attributes;
+  EDKII_PEI_READ_ONLY_VARIABLE2_EX_PPI  *VariablePpi;
+  EFI_STATUS                            Status;
+  GET_VAR_PASSWORD_TEST_STRUCT          GetData;
+  UINTN                                 DataSize;
+  UINT32                                Attributes;
+  UINT8                                 AttributesEx;
 
   DEBUG((EFI_D_INFO, "##### PasswordAuthTest BEGIN #####\n"));
 
-  Status = PeiServicesLocatePpi(&gEfiPeiReadOnlyVariable2PpiGuid, 0, NULL, (VOID **)&VariablePpi);
+  Status = PeiServicesLocatePpi(&gEdkiiPeiReadOnlyVariable2ExPpiGuid, 0, NULL, (VOID **)&VariablePpi);
   ASSERT_EFI_ERROR(Status);
 
   DEBUG((EFI_D_INFO, "Test PEI 1: Get PASSWORD_AUTH variable\n"));
   DataSize = sizeof(GetData);
-  Status = VariablePpi->GetVariable (
+  Status = VariablePpi->GetVariableEx (
                           VariablePpi,
                           VAR_PASSWORD_AUTH_PEI_TEST_NAME,
                           &mVarPasswordTestGuid,
                           &Attributes,
+                          &AttributesEx,
                           &DataSize,
                           &GetData
                           );
@@ -74,8 +75,8 @@ PasswordAuthTest (
     DEBUG((EFI_D_INFO, "Test PEI 1.1: Get PASSWORD_AUTH variable data correct\n"));
     ASSERT(Attributes == (EFI_VARIABLE_NON_VOLATILE |
                           EFI_VARIABLE_BOOTSERVICE_ACCESS |
-                          EFI_VARIABLE_RUNTIME_ACCESS |
-                          EFI_VARIABLE_PASSWORD_AUTHENTICATED));
+                          EFI_VARIABLE_RUNTIME_ACCESS));
+    ASSERT(AttributesEx == EDKII_VARIABLE_PASSWORD_AUTHENTICATED);
     ASSERT(DataSize == sizeof(GetData));
     ASSERT(CompareMem(&GetData, &mGetData, sizeof(GetData)) == 0);
   }
@@ -84,34 +85,36 @@ PasswordAuthTest (
 }
 
 /**
-  Unit test for EFI_VARIABLE_PASSWORD_PROTECTED.
+  Unit test for EDKII_VARIABLE_PASSWORD_PROTECTED.
 **/
 VOID
 PasswordProtectTest (
   VOID
   )
 {
-  EFI_PEI_READ_ONLY_VARIABLE2_PPI       *VariablePpi;
+  EDKII_PEI_READ_ONLY_VARIABLE2_EX_PPI  *VariablePpi;
   EFI_STATUS                            Status;
   GET_VAR_PASSWORD_TEST_STRUCT          *GetDataOutput;
   GET_VAR_PASSWORD_PROTECT_TEST_STRUCT  GetDataInput;
   UINTN                                 DataSize;
   UINT32                                Attributes;
+  UINT8                                 AttributesEx;
 
   DEBUG((EFI_D_INFO, "##### PasswordProtectTest BEGIN #####\n"));
 
-  Status = PeiServicesLocatePpi(&gEfiPeiReadOnlyVariable2PpiGuid, 0, NULL, (VOID **)&VariablePpi);
+  Status = PeiServicesLocatePpi(&gEdkiiPeiReadOnlyVariable2ExPpiGuid, 0, NULL, (VOID **)&VariablePpi);
   ASSERT_EFI_ERROR(Status);
 
   DEBUG((EFI_D_INFO, "Test PEI 1: Get PASSWORD_PROTECT variable\n"));
   CopyMem(&GetDataInput, &mGetDataInput, sizeof(GetDataInput));
   DataSize = sizeof(GetDataInput);
-  Attributes = EFI_VARIABLE_PASSWORD_PROTECTED;
-  Status = VariablePpi->GetVariable (
+  AttributesEx = EDKII_VARIABLE_PASSWORD_PROTECTED;
+  Status = VariablePpi->GetVariableEx (
                           VariablePpi,
                           VAR_PASSWORD_PROTECT_PEI_TEST_NAME,
                           &mVarPasswordTestGuid,
                           &Attributes,
+                          &AttributesEx,
                           &DataSize,
                           &GetDataInput
                           );
@@ -122,20 +125,21 @@ PasswordProtectTest (
     GetDataOutput = (GET_VAR_PASSWORD_TEST_STRUCT *)&GetDataInput;
     ASSERT(Attributes == (EFI_VARIABLE_NON_VOLATILE |
                           EFI_VARIABLE_BOOTSERVICE_ACCESS |
-                          EFI_VARIABLE_RUNTIME_ACCESS |
-                          EFI_VARIABLE_PASSWORD_PROTECTED));
+                          EFI_VARIABLE_RUNTIME_ACCESS));
+    ASSERT(AttributesEx == EDKII_VARIABLE_PASSWORD_PROTECTED);
     ASSERT(DataSize == sizeof(*GetDataOutput));
     ASSERT(CompareMem(GetDataOutput, &mGetData, sizeof(*GetDataOutput)) == 0);
 
     DEBUG((EFI_D_INFO, "Test PEI 1.2: Get PASSWORD_PROTECT variable data with wrong password\n"));
     CopyMem(&GetDataInput, &mGetWrongDataInput, sizeof(GetDataInput));
     DataSize = sizeof(GetDataInput);
-    Attributes = EFI_VARIABLE_PASSWORD_PROTECTED;
-    Status = VariablePpi->GetVariable (
+    AttributesEx = EDKII_VARIABLE_PASSWORD_PROTECTED;
+    Status = VariablePpi->GetVariableEx (
                             VariablePpi,
                             VAR_PASSWORD_PROTECT_PEI_TEST_NAME,
                             &mVarPasswordTestGuid,
                             &Attributes,
+                            &AttributesEx,
                             &DataSize,
                             &GetDataInput
                             );

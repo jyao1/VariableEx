@@ -41,10 +41,22 @@ EFI_PEI_READ_ONLY_VARIABLE2_PPI mVariablePpi = {
   PeiGetNextVariableName
 };
 
-EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable = {
-  (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
-  &gEfiPeiReadOnlyVariable2PpiGuid,
-  &mVariablePpi
+EDKII_PEI_READ_ONLY_VARIABLE2_EX_PPI mVariableExPpi = {
+  PeiGetVariableEx,
+  PeiGetNextVariableNameEx
+};
+
+EFI_PEI_PPI_DESCRIPTOR     mPpiListVariable[] = {
+  {
+    EFI_PEI_PPI_DESCRIPTOR_PPI,
+    &gEfiPeiReadOnlyVariable2PpiGuid,
+    &mVariablePpi
+  },
+  {
+    (EFI_PEI_PPI_DESCRIPTOR_PPI | EFI_PEI_PPI_DESCRIPTOR_TERMINATE_LIST),
+    &gEdkiiPeiReadOnlyVariable2ExPpiGuid,
+    &mVariableExPpi
+  },
 };
 
 #define INTERNAL_PASSWORD_VARIABLE_GUID { \
@@ -125,7 +137,7 @@ PeimInitializeVariableServices (
   IN CONST EFI_PEI_SERVICES          **PeiServices
   )
 {
-  return PeiServicesInstallPpi (&mPpiListVariable);
+  return PeiServicesInstallPpi (&mPpiListVariable[0]);
 }
 
 /**
@@ -308,8 +320,8 @@ UserDataSizeOfVariable (
   UINTN UserDataSize;
 
   UserDataSize = DataSizeOfVariable(Variable, AuthFlag);
-  if (((Variable->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
     VARIABLE_PASSWORD_DATA_HEADER *DataHeader;
 
     ASSERT(UserDataSize > sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER));
@@ -415,8 +427,8 @@ GetVariableUserDataPtr (
   UINTN Value;
 
   Value =  (UINTN) GetVariableDataPtr (Variable, VariableHeader, AuthFlag);
-  if (((Variable->Attributes & EFI_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
     Value += sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER);
   }
 
@@ -1107,6 +1119,48 @@ PeiGetVariable (
   OUT       VOID                            *Data
   )
 {
+  return PeiGetVariableEx (NULL, VariableName, VariableGuid, Attributes, NULL, DataSize, Data);
+}
+
+/**
+  This service retrieves a variable's value using its name and GUID.
+
+  Read the specified variable from the UEFI variable store. If the Data 
+  buffer is too small to hold the contents of the variable, 
+  the error EFI_BUFFER_TOO_SMALL is returned and DataSize is set to the
+  required buffer size to obtain the data.
+
+  @param  This                  A pointer to this instance of the EFI_PEI_READ_ONLY_VARIABLE2_PPI.
+  @param  VariableName          A pointer to a null-terminated string that is the variable's name.
+  @param  VariableGuid          A pointer to an EFI_GUID that is the variable's GUID. The combination of
+                                VariableGuid and VariableName must be unique.
+  @param  Attributes            If non-NULL, on return, points to the variable's attributes.
+  @param  AttributesEx          If non-NULL, on return, points to the variable's attributes extension.
+  @param  DataSize              On entry, points to the size in bytes of the Data buffer.
+                                On return, points to the size of the data returned in Data.
+  @param  Data                  Points to the buffer which will hold the returned variable value.
+
+  @retval EFI_SUCCESS           The variable was read successfully.
+  @retval EFI_NOT_FOUND         The variable could not be found.
+  @retval EFI_BUFFER_TOO_SMALL  The DataSize is too small for the resulting data. 
+                                DataSize is updated with the size required for 
+                                the specified variable.
+  @retval EFI_INVALID_PARAMETER VariableName, VariableGuid, DataSize or Data is NULL.
+  @retval EFI_DEVICE_ERROR      The variable could not be retrieved because of a device error.
+
+**/
+EFI_STATUS
+EFIAPI
+PeiGetVariableEx (
+  IN CONST  EDKII_PEI_READ_ONLY_VARIABLE2_EX_PPI *This,
+  IN CONST  CHAR16                               *VariableName,
+  IN CONST  EFI_GUID                             *VariableGuid,
+  OUT       UINT32                               *Attributes,
+  IN OUT    UINT8                                *AttributesEx,
+  IN OUT    UINTN                                *DataSize,
+  OUT       VOID                                 *Data
+  )
+{
   VARIABLE_POINTER_TRACK  Variable;
   UINTN                   VarDataSize;
   EFI_STATUS              Status;
@@ -1141,11 +1195,11 @@ PeiGetVariable (
       return EFI_INVALID_PARAMETER;
     }
 
-    if ((VariableHeader->Attributes & EFI_VARIABLE_PASSWORD_PROTECTED) == 0) {
+    if ((((VARIABLE_HEADER_EX *)VariableHeader)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0) {
       GetVariableNameOrData (&StoreInfo, GetVariableUserDataPtr (Variable.CurrPtr, VariableHeader, StoreInfo.AuthFlag), VarDataSize, Data);
     } else {
       UINTN                         EncVarDataSize;
-      EFI_VARIABLE_PASSWORD_DATA    *PasswordData;
+      EDKII_VARIABLE_PASSWORD_DATA  *PasswordData;
       VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
       VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
       BOOLEAN                       Result;
@@ -1153,13 +1207,17 @@ PeiGetVariable (
       UINTN                         ScratchBufferSize;
       EFI_HOB_GUID_TYPE             *GuidHob;
 
-      DEBUG((EFI_D_INFO, "Get EFI_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, VariableGuid));
+      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, VariableGuid));
 
-      if (*DataSize < sizeof(EFI_VARIABLE_PASSWORD_DATA)) {
+      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0)) {
+        return EFI_INVALID_PARAMETER;
+      }
+
+      if (*DataSize < sizeof(EDKII_VARIABLE_PASSWORD_DATA)) {
         return EFI_INVALID_PARAMETER;
       }
       PasswordData = Data;
-      if (*DataSize - sizeof(EFI_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
+      if (*DataSize - sizeof(EDKII_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
         return EFI_INVALID_PARAMETER;
       }
 
@@ -1246,6 +1304,9 @@ PeiGetVariable (
     if (Attributes != NULL) {
       *Attributes = VariableHeader->Attributes;
     }
+    if (AttributesEx != NULL) {
+      *AttributesEx = ((VARIABLE_HEADER_EX *)VariableHeader)->AttributesEx;
+    }
 
     *DataSize = VarDataSize;
     return EFI_SUCCESS;
@@ -1291,6 +1352,52 @@ PeiGetNextVariableName (
   IN OUT UINTN                              *VariableNameSize,
   IN OUT CHAR16                             *VariableName,
   IN OUT EFI_GUID                           *VariableGuid
+  )
+{
+  return PeiGetNextVariableNameEx (NULL, VariableNameSize, VariableName, VariableGuid, NULL, NULL);
+}
+
+/**
+  Return the next variable name and GUID.
+
+  This function is called multiple times to retrieve the VariableName 
+  and VariableGuid of all variables currently available in the system. 
+  On each call, the previous results are passed into the interface, 
+  and, on return, the interface returns the data for the next 
+  interface. When the entire variable list has been returned, 
+  EFI_NOT_FOUND is returned.
+
+  @param  This              A pointer to this instance of the EFI_PEI_READ_ONLY_VARIABLE2_PPI.
+
+  @param  VariableNameSize  On entry, points to the size of the buffer pointed to by VariableName.
+                            On return, the size of the variable name buffer.
+  @param  VariableName      On entry, a pointer to a null-terminated string that is the variable's name.
+                            On return, points to the next variable's null-terminated name string.
+
+  @param  VariableGuid      On entry, a pointer to an EFI_GUID that is the variable's GUID. 
+                            On return, a pointer to the next variable's GUID.
+  @param  Attributes        If non-NULL, on return, points to the variable's attributes.
+  @param  AttributesEx      If non-NULL, on return, points to the variable's attributes extension.
+
+  @retval EFI_SUCCESS           The variable was read successfully.
+  @retval EFI_NOT_FOUND         The variable could not be found.
+  @retval EFI_BUFFER_TOO_SMALL  The VariableNameSize is too small for the resulting
+                                data. VariableNameSize is updated with the size
+                                required for the specified variable.
+  @retval EFI_INVALID_PARAMETER VariableName, VariableGuid or
+                                VariableNameSize is NULL.
+  @retval EFI_DEVICE_ERROR      The variable could not be retrieved because of a device error.
+
+**/
+EFI_STATUS
+EFIAPI
+PeiGetNextVariableNameEx (
+  IN CONST  EDKII_PEI_READ_ONLY_VARIABLE2_EX_PPI *This,
+  IN OUT    UINTN                                *VariableNameSize,
+  IN OUT    CHAR16                               *VariableName,
+  IN OUT    EFI_GUID                             *VariableGuid,
+  IN OUT    UINT32                               *Attributes,
+  IN OUT    UINT8                                *AttributesEx
   )
 {
   VARIABLE_STORE_TYPE     Type;
@@ -1414,6 +1521,12 @@ PeiGetNextVariableName (
       }
 
       *VariableNameSize = VarNameSize;
+      if (Attributes != NULL) {
+        *Attributes = VariableHeader->Attributes;
+      }
+      if (AttributesEx != NULL) {
+        *AttributesEx = ((VARIABLE_HEADER_EX *)VariableHeader)->AttributesEx;
+      }
       //
       // Variable is found
       //
@@ -1423,3 +1536,4 @@ PeiGetNextVariableName (
     }
   }
 }
+

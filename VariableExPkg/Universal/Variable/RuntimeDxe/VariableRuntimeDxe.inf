@@ -78,6 +78,7 @@
   gEfiVariableArchProtocolGuid                  ## PRODUCES
   gEdkiiVariableLockProtocolGuid                ## PRODUCES
   gEdkiiVarCheckProtocolGuid                    ## PRODUCES
+  gEdkiiVariableExProtocolGuid                  ## PRODUCES
 
 [Guids]
   ## SOMETIMES_CONSUMES   ## GUID # Signature of Variable store header

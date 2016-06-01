@@ -26,6 +26,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include <Protocol/SmmVariable.h>
+#include <Protocol/SmmVariableEx.h>
 #include <Protocol/SmmFirmwareVolumeBlock.h>
 #include <Protocol/SmmFaultTolerantWrite.h>
 #include <Protocol/SmmEndOfDxe.h>
@@ -35,6 +36,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Library/SmmMemLib.h>
 
 #include <Guid/SmmVariableCommon.h>
+#include <Guid/SmmVariableCommonEx.h>
 #include <Guid/ZeroGuid.h>
 #include "Variable.h"
 
@@ -65,6 +67,72 @@ SecureBootHook (
 }
 
 /**
+  Sets the value of a variable.
+
+  @param[in]  VariableName       A Null-terminated string that is the name of the vendor's variable.
+                                 Each VariableName is unique for each VendorGuid. VariableName must
+                                 contain 1 or more characters. If VariableName is an empty string,
+                                 then EFI_INVALID_PARAMETER is returned.
+  @param[in]  VendorGuid         A unique identifier for the vendor.
+  @param[in]  Attributes         Attributes bitmask to set for the variable.
+  @param[in]  AttributesEx       Attributes Extension bitmask to set for the variable.
+  @param[in]  DataSize           The size in bytes of the Data buffer. Unless the EFI_VARIABLE_APPEND_WRITE,
+                                 EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS, or 
+                                 EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS attribute is set, a size of zero 
+                                 causes the variable to be deleted. When the EFI_VARIABLE_APPEND_WRITE attribute is 
+                                 set, then a SetVariable() call with a DataSize of zero will not cause any change to 
+                                 the variable value (the timestamp associated with the variable may be updated however 
+                                 even if no new data value is provided,see the description of the 
+                                 EFI_VARIABLE_AUTHENTICATION_2 descriptor below. In this case the DataSize will not 
+                                 be zero since the EFI_VARIABLE_AUTHENTICATION_2 descriptor will be populated). 
+  @param[in]  Data               The contents for the variable.
+
+  @retval EFI_SUCCESS            The firmware has successfully stored the variable and its data as
+                                 defined by the Attributes.
+  @retval EFI_INVALID_PARAMETER  An invalid combination of attribute bits, name, and GUID was supplied, or the
+                                 DataSize exceeds the maximum allowed.
+  @retval EFI_INVALID_PARAMETER  VariableName is an empty string.
+  @retval EFI_OUT_OF_RESOURCES   Not enough storage is available to hold the variable and its data.
+  @retval EFI_DEVICE_ERROR       The variable could not be retrieved due to a hardware error.
+  @retval EFI_WRITE_PROTECTED    The variable in question is read-only.
+  @retval EFI_WRITE_PROTECTED    The variable in question cannot be deleted.
+  @retval EFI_SECURITY_VIOLATION The variable could not be written due to EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS 
+                                 or EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACESS being set, but the AuthInfo 
+                                 does NOT pass the validation check carried out by the firmware.
+  
+  @retval EFI_NOT_FOUND          The variable trying to be updated or deleted was not found.
+
+**/
+EFI_STATUS
+EFIAPI
+SmmVariableSetVariableEx (
+  IN  CHAR16                       *VariableName,
+  IN  EFI_GUID                     *VendorGuid,
+  IN  UINT32                       Attributes,
+  IN  UINT8                        AttributesEx,
+  IN  UINTN                        DataSize,
+  IN  VOID                         *Data
+  )
+{
+  EFI_STATUS                 Status;
+
+  //
+  // Disable write protection when the calling SetVariable() through EFI_SMM_VARIABLE_PROTOCOL.
+  //
+  mRequestSource = VarCheckFromTrusted;
+  Status         = VariableServiceSetVariableEx (
+                     VariableName,
+                     VendorGuid,
+                     Attributes,
+                     AttributesEx,
+                     DataSize,
+                     Data
+                     );
+  mRequestSource = VarCheckFromUntrusted;
+  return Status;
+}
+
+/**
 
   This code sets variable in storage blocks (Volatile or Non-Volatile).
 
@@ -92,27 +160,20 @@ SmmVariableSetVariable (
   IN VOID                    *Data
   )
 {
-  EFI_STATUS                 Status;
-
-  //
-  // Disable write protection when the calling SetVariable() through EFI_SMM_VARIABLE_PROTOCOL.
-  //
-  mRequestSource = VarCheckFromTrusted;
-  Status         = VariableServiceSetVariable (
-                     VariableName,
-                     VendorGuid,
-                     Attributes,
-                     DataSize,
-                     Data
-                     );
-  mRequestSource = VarCheckFromUntrusted;
-  return Status;
+  return SmmVariableSetVariableEx (VariableName, VendorGuid, Attributes, 0, DataSize, Data);
 }
 
 EFI_SMM_VARIABLE_PROTOCOL      gSmmVariable = {
   VariableServiceGetVariable,
   VariableServiceGetNextVariableName,
   SmmVariableSetVariable,
+  VariableServiceQueryVariableInfo
+};
+
+EDKII_SMM_VARIABLE_EX_PROTOCOL      gSmmVariableEx = {
+  VariableServiceGetVariableEx,
+  VariableServiceGetNextVariableNameEx,
+  SmmVariableSetVariableEx,
   VariableServiceQueryVariableInfo
 };
 
@@ -459,19 +520,19 @@ SmmVariableHandler (
   IN OUT UINTN                                     *CommBufferSize
   )
 {
-  EFI_STATUS                                       Status;
-  SMM_VARIABLE_COMMUNICATE_HEADER                  *SmmVariableFunctionHeader;
-  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE         *SmmVariableHeader;
-  SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME  *GetNextVariableName;
-  SMM_VARIABLE_COMMUNICATE_QUERY_VARIABLE_INFO     *QueryVariableInfo;
-  SMM_VARIABLE_COMMUNICATE_GET_PAYLOAD_SIZE        *GetPayloadSize;
-  VARIABLE_INFO_ENTRY                              *VariableInfo;
-  SMM_VARIABLE_COMMUNICATE_LOCK_VARIABLE           *VariableToLock;
+  EFI_STATUS                                           Status;
+  SMM_VARIABLE_COMMUNICATE_HEADER                      *SmmVariableFunctionHeader;
+  SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX          *SmmVariableHeader;
+  SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX   *GetNextVariableName;
+  SMM_VARIABLE_COMMUNICATE_QUERY_VARIABLE_INFO         *QueryVariableInfo;
+  SMM_VARIABLE_COMMUNICATE_GET_PAYLOAD_SIZE            *GetPayloadSize;
+  VARIABLE_INFO_ENTRY                                  *VariableInfo;
+  SMM_VARIABLE_COMMUNICATE_LOCK_VARIABLE               *VariableToLock;
   SMM_VARIABLE_COMMUNICATE_VAR_CHECK_VARIABLE_PROPERTY *CommVariableProperty;
-  UINTN                                            InfoSize;
-  UINTN                                            NameBufferSize;
-  UINTN                                            CommBufferPayloadSize;
-  UINTN                                            TempCommBufferSize;
+  UINTN                                                InfoSize;
+  UINTN                                                NameBufferSize;
+  UINTN                                                CommBufferPayloadSize;
+  UINTN                                                TempCommBufferSize;
 
   //
   // If input is invalid, stop processing this SMI
@@ -499,8 +560,8 @@ SmmVariableHandler (
 
   SmmVariableFunctionHeader = (SMM_VARIABLE_COMMUNICATE_HEADER *)CommBuffer;
   switch (SmmVariableFunctionHeader->Function) {
-    case SMM_VARIABLE_FUNCTION_GET_VARIABLE:
-      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) {
+    case SMM_VARIABLE_FUNCTION_GET_VARIABLE_EX:
+      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) {
         DEBUG ((EFI_D_ERROR, "GetVariable: SMM communication buffer size invalid!\n"));
         return EFI_SUCCESS;
       }
@@ -508,16 +569,16 @@ SmmVariableHandler (
       // Copy the input communicate buffer payload to pre-allocated SMM variable buffer payload.
       //
       CopyMem (mVariableBufferPayload, SmmVariableFunctionHeader->Data, CommBufferPayloadSize);
-      SmmVariableHeader = (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE *) mVariableBufferPayload;
-      if (((UINTN)(~0) - SmmVariableHeader->DataSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) ||
-         ((UINTN)(~0) - SmmVariableHeader->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) + SmmVariableHeader->DataSize)) {
+      SmmVariableHeader = (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX *) mVariableBufferPayload;
+      if (((UINTN)(~0) - SmmVariableHeader->DataSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) ||
+         ((UINTN)(~0) - SmmVariableHeader->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) + SmmVariableHeader->DataSize)) {
         //
         // Prevent InfoSize overflow happen
         //
         Status = EFI_ACCESS_DENIED;
         goto EXIT;
       }
-      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)
+      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)
                  + SmmVariableHeader->DataSize + SmmVariableHeader->NameSize;
 
       //
@@ -537,18 +598,19 @@ SmmVariableHandler (
         goto EXIT;
       }
 
-      Status = VariableServiceGetVariable (
+      Status = VariableServiceGetVariableEx (
                  SmmVariableHeader->Name,
                  &SmmVariableHeader->Guid,
                  &SmmVariableHeader->Attributes,
+                 &SmmVariableHeader->AttributesEx,
                  &SmmVariableHeader->DataSize,
                  (UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize
                  );
       CopyMem (SmmVariableFunctionHeader->Data, mVariableBufferPayload, CommBufferPayloadSize);
       break;
 
-    case SMM_VARIABLE_FUNCTION_GET_NEXT_VARIABLE_NAME:
-      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name)) {
+    case SMM_VARIABLE_FUNCTION_GET_NEXT_VARIABLE_NAME_EX:
+      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name)) {
         DEBUG ((EFI_D_ERROR, "GetNextVariableName: SMM communication buffer size invalid!\n"));
         return EFI_SUCCESS;
       }
@@ -556,15 +618,15 @@ SmmVariableHandler (
       // Copy the input communicate buffer payload to pre-allocated SMM variable buffer payload.
       //
       CopyMem (mVariableBufferPayload, SmmVariableFunctionHeader->Data, CommBufferPayloadSize);
-      GetNextVariableName = (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME *) mVariableBufferPayload;
-      if ((UINTN)(~0) - GetNextVariableName->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name)) {
+      GetNextVariableName = (SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX *) mVariableBufferPayload;
+      if ((UINTN)(~0) - GetNextVariableName->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name)) {
         //
         // Prevent InfoSize overflow happen
         //
         Status = EFI_ACCESS_DENIED;
         goto EXIT;
       }
-      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name) + GetNextVariableName->NameSize;
+      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name) + GetNextVariableName->NameSize;
 
       //
       // SMRAM range check already covered before
@@ -575,7 +637,7 @@ SmmVariableHandler (
         goto EXIT;
       }
 
-      NameBufferSize = CommBufferPayloadSize - OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME, Name);
+      NameBufferSize = CommBufferPayloadSize - OFFSET_OF(SMM_VARIABLE_COMMUNICATE_GET_NEXT_VARIABLE_NAME_EX, Name);
       if (NameBufferSize < sizeof (CHAR16) || GetNextVariableName->Name[NameBufferSize/sizeof (CHAR16) - 1] != L'\0') {
         //
         // Make sure input VariableName is A Null-terminated string.
@@ -584,16 +646,18 @@ SmmVariableHandler (
         goto EXIT;
       }
 
-      Status = VariableServiceGetNextVariableName (
+      Status = VariableServiceGetNextVariableNameEx (
                  &GetNextVariableName->NameSize,
                  GetNextVariableName->Name,
-                 &GetNextVariableName->Guid
+                 &GetNextVariableName->Guid,
+                 &GetNextVariableName->Attributes,
+                 &GetNextVariableName->AttributesEx
                  );
       CopyMem (SmmVariableFunctionHeader->Data, mVariableBufferPayload, CommBufferPayloadSize);
       break;
 
-    case SMM_VARIABLE_FUNCTION_SET_VARIABLE:
-      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) {
+    case SMM_VARIABLE_FUNCTION_SET_VARIABLE_EX:
+      if (CommBufferPayloadSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) {
         DEBUG ((EFI_D_ERROR, "SetVariable: SMM communication buffer size invalid!\n"));
         return EFI_SUCCESS;
       }
@@ -601,16 +665,16 @@ SmmVariableHandler (
       // Copy the input communicate buffer payload to pre-allocated SMM variable buffer payload.
       //
       CopyMem (mVariableBufferPayload, SmmVariableFunctionHeader->Data, CommBufferPayloadSize);
-      SmmVariableHeader = (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE *) mVariableBufferPayload;
-      if (((UINTN)(~0) - SmmVariableHeader->DataSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)) ||
-         ((UINTN)(~0) - SmmVariableHeader->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name) + SmmVariableHeader->DataSize)) {
+      SmmVariableHeader = (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX *) mVariableBufferPayload;
+      if (((UINTN)(~0) - SmmVariableHeader->DataSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) ||
+         ((UINTN)(~0) - SmmVariableHeader->NameSize < OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) + SmmVariableHeader->DataSize)) {
         //
         // Prevent InfoSize overflow happen
         //
         Status = EFI_ACCESS_DENIED;
         goto EXIT;
       }
-      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE, Name)
+      InfoSize = OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)
                  + SmmVariableHeader->DataSize + SmmVariableHeader->NameSize;
 
       //
@@ -631,10 +695,11 @@ SmmVariableHandler (
         goto EXIT;
       }
 
-      Status = VariableServiceSetVariable (
+      Status = VariableServiceSetVariableEx (
                  SmmVariableHeader->Name,
                  &SmmVariableHeader->Guid,
                  SmmVariableHeader->Attributes,
+                 SmmVariableHeader->AttributesEx,
                  SmmVariableHeader->DataSize,
                  (UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize
                  );
@@ -936,6 +1001,14 @@ VariableServiceInitialize (
                     &gEfiSmmVariableProtocolGuid,
                     EFI_NATIVE_INTERFACE,
                     &gSmmVariable
+                    );
+  ASSERT_EFI_ERROR (Status);
+
+  Status = gSmst->SmmInstallProtocolInterface (
+                    &VariableHandle,
+                    &gEdkiiSmmVariableExProtocolGuid,
+                    EFI_NATIVE_INTERFACE,
+                    &gSmmVariableEx
                     );
   ASSERT_EFI_ERROR (Status);
 

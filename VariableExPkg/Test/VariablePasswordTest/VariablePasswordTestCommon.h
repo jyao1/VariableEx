@@ -17,13 +17,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #define PASSWORD_SIZE 8
 #define VAR_SIZE      8
 typedef struct {
-  EFI_VARIABLE_PASSWORD_DATA  PasswordHeader;
+  EDKII_VARIABLE_PASSWORD_DATA  PasswordHeader;
   CHAR8                       AsciiData[PASSWORD_SIZE];
   UINT8                       VarData[VAR_SIZE];
 } SET_VAR_PASSWORD_TEST_STRUCT;
 
 typedef struct {
-  EFI_VARIABLE_PASSWORD_DATA  PasswordHeader;
+  EDKII_VARIABLE_PASSWORD_DATA  PasswordHeader;
   CHAR8                       AsciiData[PASSWORD_SIZE];
 } DELETE_VAR_PASSWORD_TEST_STRUCT;
 
@@ -32,19 +32,19 @@ typedef struct {
 } GET_VAR_PASSWORD_TEST_STRUCT;
 
 typedef struct {
-  EFI_VARIABLE_PASSWORD_DATA  PasswordHeader;
+  EDKII_VARIABLE_PASSWORD_DATA  PasswordHeader;
   CHAR8                       AsciiData[PASSWORD_SIZE];
 } GET_VAR_PASSWORD_PROTECT_TEST_STRUCT;
 ;
 
 //
-// EFI_VARIABLE_PASSWORD_AUTHENTICATED test
+// EDKII_VARIABLE_PASSWORD_AUTHENTICATED test
 //
 #define VAR_PASSWORD_AUTH_TEST_NAME      L"VarPasswordAuthTest"
 #define VAR_PASSWORD_AUTH_PEI_TEST_NAME  L"VarPasswordAuthPeiTest"
 
 //
-// EFI_VARIABLE_PASSWORD_PROTECTED test
+// EDKII_VARIABLE_PASSWORD_PROTECTED test
 //
 #define VAR_PASSWORD_PROTECT_TEST_NAME      L"VarPasswordProtectTest"
 #define VAR_PASSWORD_PROTECT_PEI_TEST_NAME  L"VarPasswordProtectPeiTest"

@@ -21,6 +21,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Protocol/FaultTolerantWrite.h>
 #include <Protocol/FirmwareVolumeBlock.h>
 #include <Protocol/Variable.h>
+#include <Protocol/VariableEx.h>
 #include <Protocol/VariableLock.h>
 #include <Protocol/VarCheck.h>
 #include <Library/PcdLib.h>
@@ -40,14 +41,12 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/GlobalVariable.h>
 #include <Guid/EventGroup.h>
 #include <Guid/VariableFormat.h>
+#include <Guid/VariableFormatEx.h>
 #include <Guid/SystemNvDataGuid.h>
 #include <Guid/FaultTolerantWrite.h>
 #include <Guid/VarErrorFlag.h>
 
 #include <Library/PasswordLib.h>
-
-#include <Uefi/UefiMultiPhaseEx.h>
-#include <Guid/VariableFormatEx.h>
 
 #define EFI_VARIABLE_ATTRIBUTES_MASK (EFI_VARIABLE_NON_VOLATILE | \
                                       EFI_VARIABLE_BOOTSERVICE_ACCESS | \
@@ -55,9 +54,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
                                       EFI_VARIABLE_HARDWARE_ERROR_RECORD | \
                                       EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS | \
                                       EFI_VARIABLE_TIME_BASED_AUTHENTICATED_WRITE_ACCESS | \
-                                      EFI_VARIABLE_APPEND_WRITE | \
-                                      EFI_VARIABLE_PASSWORD_AUTHENTICATED | \
-                                      EFI_VARIABLE_PASSWORD_PROTECTED)
+                                      EFI_VARIABLE_APPEND_WRITE)
 
 ///
 /// The size of a 3 character ISO639 language code.
@@ -328,6 +325,40 @@ UpdateVariable (
   IN      EFI_TIME        *TimeStamp  OPTIONAL
   );
 
+/**
+  Update the variable region with Variable information. If EFI_VARIABLE_AUTHENTICATED_WRITE_ACCESS is set,
+  index of associated public key is needed.
+
+  @param[in] VariableName       Name of variable.
+  @param[in] VendorGuid         Guid of variable.
+  @param[in] Data               Variable data.
+  @param[in] DataSize           Size of data. 0 means delete.
+  @param[in] Attributes         Attributes of the variable.
+  @param[in] AttributesEx         AttributesEx of the variable.
+  @param[in] KeyIndex           Index of associated public key.
+  @param[in] MonotonicCount     Value of associated monotonic count.
+  @param[in, out] Variable      The variable information that is used to keep track of variable usage.
+
+  @param[in] TimeStamp          Value of associated TimeStamp.
+
+  @retval EFI_SUCCESS           The update operation is success.
+  @retval EFI_OUT_OF_RESOURCES  Variable region is full, cannot write other data into this region.
+
+**/
+EFI_STATUS
+UpdateVariableEx (
+  IN      CHAR16          *VariableName,
+  IN      EFI_GUID        *VendorGuid,
+  IN      VOID            *Data,
+  IN      UINTN           DataSize,
+  IN      UINT32          Attributes OPTIONAL,
+  IN      UINT8           AttributesEx OPTIONAL,
+  IN      UINT32          KeyIndex  OPTIONAL,
+  IN      UINT64          MonotonicCount  OPTIONAL,
+  IN OUT  VARIABLE_POINTER_TRACK *Variable,
+  IN      EFI_TIME        *TimeStamp  OPTIONAL
+  );
+
 
 /**
   Return TRUE if ExitBootServices () has been called.
@@ -542,6 +573,39 @@ VariableServiceGetVariable (
   );
 
 /**
+
+  This code finds variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+
+  @param VariableName               Name of Variable to be found.
+  @param VendorGuid                 Variable vendor GUID.
+  @param Attributes                 Attribute value of the variable found.
+  @param AttributesEx               AttributeEx value of the variable found.
+  @param DataSize                   Size of Data found. If size is less than the
+                                    data, this value contains the required size.
+  @param Data                       Data pointer.
+
+  @return EFI_INVALID_PARAMETER     Invalid parameter.
+  @return EFI_SUCCESS               Find the specified variable.
+  @return EFI_NOT_FOUND             Not found.
+  @return EFI_BUFFER_TO_SMALL       DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceGetVariableEx (
+  IN      CHAR16            *VariableName,
+  IN      EFI_GUID          *VendorGuid,
+  OUT     UINT32            *Attributes OPTIONAL,
+  IN OUT  UINT8             *AttributesEx OPTIONAL,
+  IN OUT  UINTN             *DataSize,
+  OUT     VOID              *Data
+  );
+
+/**
   This code Finds the Next available variable.
 
   Caution: This function may receive untrusted input.
@@ -590,6 +654,35 @@ VariableServiceGetNextVariableName (
 
 /**
 
+  This code Finds the Next available variable.
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode. This function will do basic validation, before parse the data.
+
+  @param VariableNameSize           Size of the variable name.
+  @param VariableName               Pointer to variable name.
+  @param VendorGuid                 Variable Vendor Guid.
+  @param Attributes                 Attribute value of the variable found
+  @param AttributesEx               AttributeEx value of the variable found
+
+  @return EFI_INVALID_PARAMETER     Invalid parameter.
+  @return EFI_SUCCESS               Find the specified variable.
+  @return EFI_NOT_FOUND             Not found.
+  @return EFI_BUFFER_TO_SMALL       DataSize is too small for the result.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceGetNextVariableNameEx (
+  IN OUT  UINTN             *VariableNameSize,
+  IN OUT  CHAR16            *VariableName,
+  IN OUT  EFI_GUID          *VendorGuid,
+  OUT     UINT32            *Attributes OPTIONAL,
+  OUT     UINT8             *AttributesEx OPTIONAL
+  );
+
+/**
+
   This code sets variable in storage blocks (Volatile or Non-Volatile).
 
   Caution: This function may receive untrusted input.
@@ -619,6 +712,43 @@ VariableServiceSetVariable (
   IN CHAR16                  *VariableName,
   IN EFI_GUID                *VendorGuid,
   IN UINT32                  Attributes,
+  IN UINTN                   DataSize,
+  IN VOID                    *Data
+  );
+
+/**
+
+  This code sets variable in storage blocks (Volatile or Non-Volatile).
+
+  Caution: This function may receive untrusted input.
+  This function may be invoked in SMM mode, and datasize and data are external input.
+  This function will do basic validation, before parse the data.
+  This function will parse the authentication carefully to avoid security issues, like
+  buffer overflow, integer overflow.
+  This function will check attribute carefully to avoid authentication bypass.
+
+  @param VariableName                     Name of Variable to be found.
+  @param VendorGuid                       Variable vendor GUID.
+  @param Attributes                       Attribute value of the variable found
+  @param AttributesEx                     AttributeEx value of the variable found
+  @param DataSize                         Size of Data found. If size is less than the
+                                          data, this value contains the required size.
+  @param Data                             Data pointer.
+
+  @return EFI_INVALID_PARAMETER           Invalid parameter.
+  @return EFI_SUCCESS                     Set successfully.
+  @return EFI_OUT_OF_RESOURCES            Resource not enough to set variable.
+  @return EFI_NOT_FOUND                   Not found.
+  @return EFI_WRITE_PROTECTED             Variable is read-only.
+
+**/
+EFI_STATUS
+EFIAPI
+VariableServiceSetVariableEx (
+  IN CHAR16                  *VariableName,
+  IN EFI_GUID                *VendorGuid,
+  IN UINT32                  Attributes,
+  IN UINT8                   AttributesEx,
   IN UINTN                   DataSize,
   IN VOID                    *Data
   );

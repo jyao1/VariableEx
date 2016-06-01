@@ -14,6 +14,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include "Variable.h"
 
+extern UINT8 mPendingAttributesEx;
+
 /**
   Finds variable in storage blocks of volatile and non-volatile storage areas.
 
@@ -157,12 +159,13 @@ VariableExLibUpdateVariable (
   VARIABLE_POINTER_TRACK    Variable;
 
   FindVariable (AuthVariableInfo->VariableName, AuthVariableInfo->VendorGuid, &Variable, &mVariableModuleGlobal->VariableGlobal, FALSE);
-  return UpdateVariable (
+  return UpdateVariableEx (
            AuthVariableInfo->VariableName,
            AuthVariableInfo->VendorGuid,
            AuthVariableInfo->Data,
            AuthVariableInfo->DataSize,
            AuthVariableInfo->Attributes,
+           mPendingAttributesEx,
            AuthVariableInfo->PubKeyIndex,
            AuthVariableInfo->MonotonicCount,
            &Variable,
