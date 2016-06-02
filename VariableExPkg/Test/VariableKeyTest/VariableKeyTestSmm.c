@@ -1,72 +1,27 @@
 /** @file
-  Variable Lock Protocol is related to EDK II-specific implementation of variables.
 
   Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
-  This program and the accompanying materials                          
-  are licensed and made available under the terms and conditions of the BSD License         
-  which accompanies this distribution.  The full text of the license may be found at        
-  http://opensource.org/licenses/bsd-license.php                                            
+  This program and the accompanying materials
+  are licensed and made available under the terms and conditions of the BSD License
+  which accompanies this distribution.  The full text of the license may be found at
+  http://opensource.org/licenses/bsd-license.php
 
-  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,                     
-  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.             
+THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
+WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef __EDKII_VARIABLE_EX_H__
-#define __EDKII_VARIABLE_EX_H__
+#include <PiSmm.h>
+#include <Protocol/SmmVariableEx.h>
 
-#include <Uefi.h>
+#include <Library/BaseMemoryLib.h>
+#include <Library/BaseLib.h>
+#include <Library/MemoryAllocationLib.h>
+#include <Library/DebugLib.h>
+#include <Library/SmmServicesTableLib.h>
 
-#define EDKII_VARIABLE_EX_PROTOCOL_GUID \
-  { \
-    0x5e0a3126, 0x1a63, 0x467a, { 0xa2, 0x27, 0xc5, 0x2e, 0xd0, 0xe1, 0xe4, 0xf } \
-  }
-
-typedef struct _EDKII_VARIABLE_EX_PROTOCOL  EDKII_VARIABLE_EX_PROTOCOL;
-
-//
-// EDKII extension for Variable AttributesEx
-//
-#define EDKII_VARIABLE_KEY_AUTHENTICATED      0x01
-#define EDKII_VARIABLE_KEY_PROTECTED          0x02
-
-//
-// EDKII extension
-//
-#define EDKII_VARIABLE_KEY_TYPE_RAW      0
-#define EDKII_VARIABLE_KEY_TYPE_ASCII    1
-#define EDKII_VARIABLE_KEY_TYPE_UNICODE  2
-typedef struct {
-  UINT32                      KeyType;
-  UINT32                      KeySize;
-  //  union {
-  //    UINT8                       RawData[KeySize];
-  //    CHAR8                       AsciiData[KeySize];
-  //    CHAR16                      UnicodeData[KeySize/2];
-  //  } Data;
-} EDKII_VARIABLE_KEY_DATA;
-
-//
-// If EDKII_VARIABLE_KEY_AUTHENTICATED or EDKII_VARIABLE_KEY_PROTECTED is set,
-// the input data for SetVariableEx is:
-// +-------------------------+
-// | EDKII_VARIABLE_KEY_DATA  |
-// | (include Key Data)       |
-// +-------------------------+
-// |   User Data              |
-// +-------------------------+
-//
-
-//
-// If EDKII_VARIABLE_KEY_PROTECTED is set,
-// the input data for GetVariableEx is:
-// +-------------------------+
-// | EDKII_VARIABLE_KEY_DATA  |
-// | (include Key Data)       |
-// +-------------------------+
-// |   Dummy Buffer           |
-// +-------------------------+
-//
+#include "VariableKeyTestCommon.h"
+EDKII_SMM_VARIABLE_EX_PROTOCOL        *mSmmVariable;
 
 /**
   Returns the value of a variable.
@@ -94,50 +49,19 @@ typedef struct {
   @retval EFI_SECURITY_VIOLATION The variable could not be retrieved due to an authentication failure.
 
 **/
-typedef
 EFI_STATUS
-(EFIAPI *EDKII_GET_VARIABLE_EX)(
+EFIAPI
+TestGetVariableEx (
   IN     CHAR16                      *VariableName,
   IN     EFI_GUID                    *VendorGuid,
   OUT    UINT32                      *Attributes,    OPTIONAL
   IN OUT UINT8                       *AttributesEx,
   IN OUT UINTN                       *DataSize,
   OUT    VOID                        *Data           OPTIONAL
-  );
-
-/**
-  Enumerates the current variable names.
-
-  @param[in, out]  VariableNameSize The size of the VariableName buffer.
-  @param[in, out]  VariableName     On input, supplies the last VariableName that was returned
-                                    by GetNextVariableName(). On output, returns the Nullterminated
-                                    string of the current variable.
-  @param[in, out]  VendorGuid       On input, supplies the last VendorGuid that was returned by
-                                    GetNextVariableName(). On output, returns the
-                                    VendorGuid of the current variable.
-  @param[out]      Attributes       If not NULL, a pointer to the memory location to return the
-                                    attributes bitmask for the variable.
-  @param[out]      AttributesEx     If not NULL, a pointer to the memory location to return the
-                                    attributes extension bitmask for the variable.
-
-  @retval EFI_SUCCESS           The function completed successfully.
-  @retval EFI_NOT_FOUND         The next variable was not found.
-  @retval EFI_BUFFER_TOO_SMALL  The VariableNameSize is too small for the result.
-  @retval EFI_INVALID_PARAMETER VariableNameSize is NULL.
-  @retval EFI_INVALID_PARAMETER VariableName is NULL.
-  @retval EFI_INVALID_PARAMETER VendorGuid is NULL.
-  @retval EFI_DEVICE_ERROR      The variable could not be retrieved due to a hardware error.
-
-**/
-typedef
-EFI_STATUS
-(EFIAPI *EDKII_GET_NEXT_VARIABLE_NAME_EX)(
-  IN OUT UINTN                    *VariableNameSize,
-  IN OUT CHAR16                   *VariableName,
-  IN OUT EFI_GUID                 *VendorGuid,
-  IN OUT UINT32                   *Attributes,
-  IN OUT UINT8                    *AttributesEx
-  );
+  )
+{
+  return mSmmVariable->SmmGetVariableEx(VariableName, VendorGuid, Attributes, AttributesEx, DataSize, Data);
+}
 
 /**
   Sets the value of a variable.
@@ -176,28 +100,45 @@ EFI_STATUS
   @retval EFI_NOT_FOUND          The variable trying to be updated or deleted was not found.
 
 **/
-typedef
 EFI_STATUS
-(EFIAPI *EDKII_SET_VARIABLE_EX)(
+EFIAPI
+TestSetVariableEx(
   IN  CHAR16                       *VariableName,
   IN  EFI_GUID                     *VendorGuid,
   IN  UINT32                       Attributes,
   IN  UINT8                        AttributesEx,
   IN  UINTN                        DataSize,
   IN  VOID                         *Data
-  );
+  )
+{
+  return mSmmVariable->SmmSetVariableEx(VariableName, VendorGuid, Attributes, AttributesEx, DataSize, Data);
+}
 
-///
-/// EDKII Variable Ex Protocol is related to EDK II-specific implementation of variables.
-///
-struct _EDKII_VARIABLE_EX_PROTOCOL {
-  EDKII_GET_VARIABLE_EX            GetVariableEx;
-  EDKII_GET_NEXT_VARIABLE_NAME_EX  GetNextVariableNameEx;
-  EDKII_SET_VARIABLE_EX            SetVariableEx;
-  EFI_QUERY_VARIABLE_INFO          QueryVariableInfo;
-};
+/**
+  The user Entry Point for Test.
 
-extern EFI_GUID gEdkiiVariableExProtocolGuid;
+  @param[in] ImageHandle    The firmware allocated handle for the EFI image.
+  @param[in] SystemTable    A pointer to the EFI System Table.
 
-#endif  
+  @retval EFI_SUCCESS       The entry point is executed successfully.
+  @retval other             Some error occurs when executing this entry point.
 
+**/
+EFI_STATUS
+EFIAPI
+SmmMain(
+  IN EFI_HANDLE        ImageHandle,
+  IN EFI_SYSTEM_TABLE  *SystemTable
+  )
+{
+  EFI_STATUS  Status;
+
+  Status = gSmst->SmmLocateProtocol (&gEdkiiSmmVariableExProtocolGuid, NULL, (VOID **)&mSmmVariable);
+  ASSERT_EFI_ERROR (Status);
+
+  KeyAuthTest(TestPhaseSmm);
+
+  KeyProtectTest(TestPhaseSmm);
+
+  return EFI_SUCCESS;
+}

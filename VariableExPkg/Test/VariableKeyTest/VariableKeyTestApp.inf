@@ -1,12 +1,11 @@
 ## @file
-#  The unit test for password based variable managment in PEI phase.
+#  The unit test for key based variable managment in DXE phase.
 #
 #  Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
 #  This program and the accompanying materials
 #  are licensed and made available under the terms and conditions of the BSD License
 #  which accompanies this distribution. The full text of the license may be found at
 #  http://opensource.org/licenses/bsd-license.php
-#
 #  THE PROGRAM IS DISTRIBUTED UNDER THE BSD LICENSE ON AN "AS IS" BASIS,
 #  WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #
@@ -14,11 +13,11 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = VariablePasswordTestPeim
-  FILE_GUID                      = 20A3A96B-E2DA-4055-9FD2-D34403A0E89B
-  MODULE_TYPE                    = PEIM
+  BASE_NAME                      = VariableKeyTestApp
+  FILE_GUID                      = 40F1559C-13DE-4A69-A79F-EE1F312F109C
+  MODULE_TYPE                    = UEFI_APPLICATION
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = PeimMain
+  ENTRY_POINT                    = UefiMain
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -27,23 +26,20 @@
 #
 
 [Sources]
-  VariablePasswordTestPeim.c
+  VariableKeyTestCommon.c
+  VariableKeyTestApp.c
 
 [Packages]
   MdePkg/MdePkg.dec
   VariableExPkg/VariableExPkg.dec
 
 [LibraryClasses]
+  UefiApplicationEntryPoint
+  UefiLib
+  UefiBootServicesTableLib
+  UefiRuntimeServicesTableLib
   BaseMemoryLib
-  PcdLib
-  HobLib
-  PeimEntryPoint
-  DebugLib
-  PeiServicesTablePointerLib
-  PeiServicesLib
-
-[Ppis]
-  gEdkiiPeiReadOnlyVariable2ExPpiGuid
-
-[Depex]
-  gEdkiiPeiReadOnlyVariable2ExPpiGuid
+  MemoryAllocationLib
+  
+[Protocols]
+  gEdkiiVariableExProtocolGuid

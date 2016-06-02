@@ -34,7 +34,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/FaultTolerantWrite.h>
 
 #include <Guid/VariableFormatEx.h>
-#include <Library/PasswordLib.h>
+#include <Library/KeyLib.h>
 
 typedef enum {
   VariableStoreTypeHob,

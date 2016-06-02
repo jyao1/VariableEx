@@ -1,5 +1,5 @@
 ## @file
-# This package provides password based integrity and confidentiality support
+# This package provides key based integrity and confidentiality support
 # for UEFI variable.
 #
 # Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
@@ -24,8 +24,8 @@
   Include
 
 [LibraryClasses]
-  ##  @libraryclass  Provide password related function.
-  PasswordLib|Include/Library/PasswordLib.h
+  ##  @libraryclass  Provide key related function.
+  KeyLib|Include/Library/KeyLib.h
 
 [Ppis]
   ## Include/Ppi/ReadOnlyVariable2Ex.h

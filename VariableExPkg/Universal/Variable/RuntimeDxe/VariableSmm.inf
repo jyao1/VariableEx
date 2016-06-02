@@ -74,7 +74,7 @@
   SmmMemLib
   AuthVariableLib
   VarCheckLib
-  PasswordLib
+  KeyLib
 
 [Protocols]
   gEfiSmmFirmwareVolumeBlockProtocolGuid        ## CONSUMES

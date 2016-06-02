@@ -634,7 +634,7 @@ RuntimeServiceGetVariableEx (
   VariableNameSize      = StrSize (VariableName);
   SmmVariableHeader     = NULL;
 
-  if ((AttributesEx != NULL) && ((*AttributesEx) & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) {
+  if ((AttributesEx != NULL) && ((*AttributesEx) & EDKII_VARIABLE_KEY_PROTECTED) != 0) {
     IsProtected = TRUE;
   } else {
     IsProtected = FALSE;

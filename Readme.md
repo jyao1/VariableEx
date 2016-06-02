@@ -1,4 +1,4 @@
-# This package is to demonstrate how to support password based UEFI Variable integrity and confidentiality.
+# This package is to demonstrate how to support key based UEFI Variable integrity and confidentiality.
 
 ## How to build?
 Just build it as a normal EDKII package.
@@ -15,35 +15,35 @@ Just build it as a normal EDKII package.
 1) EDKII Variable Ppi/Protocol extension: (VariableExPkg\Include\Ppi\ReadOnlyVariable2Ex.h,
 VariableExPkg\Include\Protocol\VariableEx.h, VariableExPkg\Include\Protocol\SmmVariableEx.h)
 Below attributes extension is added:
-  EDKII_VARIABLE_PASSWORD_AUTHENTICATED is for the password-based integrity.
-  EDKII_VARIABLE_PASSWORD_PROTECTED is for the password-based confidentiality.
+  EDKII_VARIABLE_KEY_AUTHENTICATED is for the key-based integrity.
+  EDKII_VARIABLE_KEY_PROTECTED is for the key-based confidentiality.
 
 2) EDKII Variable Storage extension: (VariableExPkg\Include\Guid\VariableFormatEx.h) 
-The variable storage is updated to support the password based HASH and data encryption.
+The variable storage is updated to support the key based HASH and data encryption.
 
-3) Password Lib: (VariableExPkg\Include\Library\PasswordLib.h)
-It is a library to provide the generic password management functions.
+3) Key Lib: (VariableExPkg\Include\Library\KeyLib.h)
+It is a library to provide the generic key-based crypto functions.
 
 4) Variable driver: (VariableExPkg\Universal\Variable)
 Both Pei variable driver and RuntimeDxe/Smm variable driver are updated to support the
-password based authentication and protection.
+key based authentication and protection.
 A platform may use these 2 drivers to replace the variable drivers defined in MdeModulePkg.
 
-5) Unit Test: (VariableExPkg\Test\VariablePasswordTest)
+5) Unit Test: (VariableExPkg\Test\VariableKeyTest)
 The unit test code for both Pei and RuntimeDxe variable.
 It can run on the Nt32 platform.
 
 ## Scope:
 1) This package only focuses on the secure variable storage management.
 This package provides a sample on how to add confidentiality support for UEFI variable.
-This package also provides a simpler way to use user password for authentication variable.
+This package also provides a simpler way to use user key for authentication variable.
 
-2) This package does not focuses on the password management.
-This package assumes the caller has a way to get the user password. For example:
-The password can be got from user input directly.
-The password can be got from an external media, such as USB Key.
-The password can be derived from biometrics, such as fingerprint.
-Or the password content can be from UEFI variable and decrypted by a root password
+2) This package does not focuses on the key management.
+This package assumes the caller has a way to get the user key. For example:
+The key can be got from user input password directly.
+The key can be got from the other media, such as USB disk, TPM, or co-processor.
+The key can be derived from biometrics, such as fingerprint.
+Or the key content can be from UEFI variable and decrypted by a root key
 as an implementation choice.
 
 ## Known limitation:

@@ -649,15 +649,15 @@ UserDataSizeOfVariable (
   UINTN UserDataSize;
 
   UserDataSize = DataSizeOfVariable(Variable);
-  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
-    VARIABLE_PASSWORD_DATA_HEADER *DataHeader;
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+    VARIABLE_KEY_DATA_HEADER *DataHeader;
 
-    ASSERT(UserDataSize > sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER));
-    UserDataSize -= (sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER));
+    ASSERT(UserDataSize > sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
+    UserDataSize -= (sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
 	
-    DataHeader = (VARIABLE_PASSWORD_DATA_HEADER *)(GetVariableDataPtr(Variable) + sizeof(VARIABLE_PASSWORD_HASH_HEADER));
-    UserDataSize = DataHeader->PasswordPlainDataSize;
+    DataHeader = (VARIABLE_KEY_DATA_HEADER *)(GetVariableDataPtr(Variable) + sizeof(VARIABLE_KEY_HASH_HEADER));
+    UserDataSize = DataHeader->KeyPlainDataSize;
   }
 
   return UserDataSize;
@@ -769,9 +769,9 @@ GetVariableUserDataPtr (
   UINTN Value;
 
   Value =  (UINTN) GetVariableDataPtr (Variable);
-  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
-    Value += sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER);
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+    Value += sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER);
   }
 
   return (UINT8 *) Value;
@@ -818,9 +818,9 @@ GetVariableUserDataOffset (
   UINTN Value;
 
   Value = GetVariableDataOffset (Variable);
-  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ) {
-    Value += sizeof(VARIABLE_PASSWORD_HASH_HEADER) + sizeof(VARIABLE_PASSWORD_DATA_HEADER);
+  if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+    Value += sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER);
   }
 
   return Value;
@@ -3084,27 +3084,27 @@ VariableServiceGetVariableEx (
       goto Done;
     }
 
-    if ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0) {
+    if ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0) {
       CopyMem (Data, GetVariableUserDataPtr (Variable.CurrPtr), VarDataSize);
     } else {
       UINTN                         EncVarDataSize;
-      EDKII_VARIABLE_PASSWORD_DATA  *PasswordData;
-      VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
-      VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
+      EDKII_VARIABLE_KEY_DATA       *KeyData;
+      VARIABLE_KEY_HASH_HEADER      VariableKeyHashHeader;
+      VARIABLE_KEY_HASH_HEADER      *OldVariableKeyHashHeader;
       BOOLEAN                       Result;
 
-      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, &VendorGuid));
+      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_KEY_PROTECTED - %S(%g)\n", VariableName, &VendorGuid));
 
-      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) == 0)) {
+      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0)) {
         return EFI_INVALID_PARAMETER;
       }
 
-      if (*DataSize < sizeof(EDKII_VARIABLE_PASSWORD_DATA)) {
+      if (*DataSize < sizeof(EDKII_VARIABLE_KEY_DATA)) {
         Status = EFI_INVALID_PARAMETER;
         goto Done;
       }
-      PasswordData = Data;
-      if (*DataSize - sizeof(EDKII_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
+      KeyData = Data;
+      if (*DataSize - sizeof(EDKII_VARIABLE_KEY_DATA) < KeyData->KeySize) {
         Status = EFI_INVALID_PARAMETER;
         goto Done;
       }
@@ -3112,24 +3112,24 @@ VariableServiceGetVariableEx (
       //
       // Update Data and DataSize
       //
-      VariablePasswordHashHeader.PasswordHashType = PASSWORD_HASH_TYPE_SHA256;
-      VariablePasswordHashHeader.PasswordHashHeadSize = sizeof(VARIABLE_PASSWORD_HASH_HEADER);
+      VariableKeyHashHeader.KeyHashType = HASH_TYPE_SHA256;
+      VariableKeyHashHeader.KeyHashHeadSize = sizeof(VARIABLE_KEY_HASH_HEADER);
 
-      DEBUG((EFI_D_INFO, "Old PASSWORD_PROTECTED Variable Found!\n"));
-      OldVariablePasswordHashHeader = (VARIABLE_PASSWORD_HASH_HEADER *)GetVariableDataPtr (Variable.CurrPtr);
+      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable Found!\n"));
+      OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr (Variable.CurrPtr);
       DEBUG((EFI_D_INFO, "Old SALT - "));
-      InternalDumpData(OldVariablePasswordHashHeader->PasswordSalt, sizeof(OldVariablePasswordHashHeader->PasswordSalt));
+      InternalDumpData(OldVariableKeyHashHeader->KeySalt, sizeof(OldVariableKeyHashHeader->KeySalt));
       DEBUG((EFI_D_INFO, "\n"));
-      CopyMem(VariablePasswordHashHeader.PasswordSalt, OldVariablePasswordHashHeader->PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      CopyMem(VariableKeyHashHeader.KeySalt, OldVariableKeyHashHeader->KeySalt, sizeof(VariableKeyHashHeader.KeySalt));
 
-      Result = PasswordLibGenerateHash (
-                 PASSWORD_HASH_TYPE_SHA256,
-                 PasswordData + 1,
-                 PasswordData->PasswordSize,
-                 VariablePasswordHashHeader.PasswordSalt,
-                 sizeof(VariablePasswordHashHeader.PasswordSalt),
-                 VariablePasswordHashHeader.PasswordHash,
-                 sizeof(VariablePasswordHashHeader.PasswordHash)
+      Result = KeyLibGenerateHash (
+                 HASH_TYPE_SHA256,
+                 KeyData + 1,
+                 KeyData->KeySize,
+                 VariableKeyHashHeader.KeySalt,
+                 sizeof(VariableKeyHashHeader.KeySalt),
+                 VariableKeyHashHeader.KeyHash,
+                 sizeof(VariableKeyHashHeader.KeyHash)
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
@@ -3139,15 +3139,15 @@ VariableServiceGetVariableEx (
       //
       // Validation
       //
-      OldVariablePasswordHashHeader = (VARIABLE_PASSWORD_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
-      DEBUG((EFI_D_INFO, "Compare PASSWORD_PROTECTED Variable HASH\n"));
+      OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
+      DEBUG((EFI_D_INFO, "Compare KEY_PROTECTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
-      InternalDumpData(VariablePasswordHashHeader.PasswordHash, sizeof(VariablePasswordHashHeader.PasswordHash));
+      InternalDumpData(VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
       DEBUG((EFI_D_INFO, "Expected HASH - "));
-      InternalDumpData(OldVariablePasswordHashHeader->PasswordHash, sizeof(OldVariablePasswordHashHeader->PasswordHash));
+      InternalDumpData(OldVariableKeyHashHeader->KeyHash, sizeof(OldVariableKeyHashHeader->KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
-      if (CompareMem(OldVariablePasswordHashHeader->PasswordHash, VariablePasswordHashHeader.PasswordHash, sizeof(VariablePasswordHashHeader.PasswordHash)) != 0) {
+      if (CompareMem(OldVariableKeyHashHeader->KeyHash, VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash)) != 0) {
         DEBUG((EFI_D_INFO, "HASH mismatch!\n"));
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
@@ -3159,25 +3159,25 @@ VariableServiceGetVariableEx (
       // Get data
       //
       EncVarDataSize = ALIGN_VALUE(VarDataSize, AES_BLOCK_SIZE);
-      ASSERT (mVariableModuleGlobal->ScratchPasswordBufferSize > EncVarDataSize);
+      ASSERT (mVariableModuleGlobal->ScratchKeyBufferSize > EncVarDataSize);
 
-      Result = PasswordLibDecrypt (
-                 PASSWORD_SYM_TYPE_AES,
-                 PasswordData + 1,
-                 PasswordData->PasswordSize,
-                 VariablePasswordHashHeader.PasswordSalt,
-                 sizeof(VariablePasswordHashHeader.PasswordSalt),
+      Result = KeyLibDecrypt (
+                 SYM_TYPE_AES,
+                 KeyData + 1,
+                 KeyData->KeySize,
+                 VariableKeyHashHeader.KeySalt,
+                 sizeof(VariableKeyHashHeader.KeySalt),
                  GetVariableUserDataPtr (Variable.CurrPtr),
                  EncVarDataSize,
-                 mVariableModuleGlobal->ScratchPasswordBuffer,
+                 mVariableModuleGlobal->ScratchKeyBuffer,
                  EncVarDataSize
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
         goto Done;
       }
-      CopyMem (Data, mVariableModuleGlobal->ScratchPasswordBuffer, VarDataSize);
-	  ZeroMem (mVariableModuleGlobal->ScratchPasswordBuffer, VarDataSize);
+      CopyMem (Data, mVariableModuleGlobal->ScratchKeyBuffer, VarDataSize);
+	  ZeroMem (mVariableModuleGlobal->ScratchKeyBuffer, VarDataSize);
     }
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
@@ -3700,40 +3700,40 @@ VariableServiceSetVariableEx (
   }
 
   mPendingAttributesEx = 0;
-  if (((AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0) ||
-      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_AUTHENTICATED) != 0)) ||
-      ((AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ||
-      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
+  if (((AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
+      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0)) ||
+      ((AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ||
+      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0)) ) {
     VOID                          *RawData;
     UINTN                         RawDataSize;
     UINTN                         EncRawDataSize;
-    EDKII_VARIABLE_PASSWORD_DATA    *PasswordData;
-    UINTN                         PasswordDataSize;
-    VARIABLE_PASSWORD_HASH_HEADER VariablePasswordHashHeader;
-    VARIABLE_PASSWORD_HASH_HEADER *OldVariablePasswordHashHeader;
-    VARIABLE_PASSWORD_DATA_HEADER VariablePasswordDataHeader;
+    EDKII_VARIABLE_KEY_DATA       *KeyData;
+    UINTN                         KeyDataSize;
+    VARIABLE_KEY_HASH_HEADER      VariableKeyHashHeader;
+    VARIABLE_KEY_HASH_HEADER      *OldVariableKeyHashHeader;
+    VARIABLE_KEY_DATA_HEADER      VariableKeyDataHeader;
     BOOLEAN                       Result;
-    BOOLEAN                       PasswordProtected;
+    BOOLEAN                       KeyProtected;
 
-    if (((AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0) ||
-        ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_PASSWORD_PROTECTED) != 0)) ) {
-      PasswordProtected = TRUE;
+    if (((AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ||
+        ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0)) ) {
+      KeyProtected = TRUE;
     } else {
-      PasswordProtected = FALSE;
+      KeyProtected = FALSE;
     }
 
-    if (PasswordProtected) {
-      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_PASSWORD_PROTECTED - %S(%g)\n", VariableName, VendorGuid));
+    if (KeyProtected) {
+      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_KEY_PROTECTED - %S(%g)\n", VariableName, VendorGuid));
     } else {
-      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_PASSWORD_AUTHENTICATED - %S(%g)\n", VariableName, VendorGuid));
+      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_KEY_AUTHENTICATED - %S(%g)\n", VariableName, VendorGuid));
     }
 
-    if (DataSize < sizeof(EDKII_VARIABLE_PASSWORD_DATA)) {
+    if (DataSize < sizeof(EDKII_VARIABLE_KEY_DATA)) {
       Status = EFI_INVALID_PARAMETER;
       goto Done;
     }
-    PasswordData = Data;
-    if (DataSize - sizeof(EDKII_VARIABLE_PASSWORD_DATA) < PasswordData->PasswordSize) {
+    KeyData = Data;
+    if (DataSize - sizeof(EDKII_VARIABLE_KEY_DATA) < KeyData->KeySize) {
       Status = EFI_INVALID_PARAMETER;
       goto Done;
     }
@@ -3741,21 +3741,21 @@ VariableServiceSetVariableEx (
     //
     // Update Data and DataSize
     //
-    PasswordDataSize = sizeof(EDKII_VARIABLE_PASSWORD_DATA) + PasswordData->PasswordSize;
+    KeyDataSize = sizeof(EDKII_VARIABLE_KEY_DATA) + KeyData->KeySize;
 
-    RawData = (VOID *)((UINTN)Data + PasswordDataSize);
-    RawDataSize = DataSize - PasswordDataSize;
+    RawData = (VOID *)((UINTN)Data + KeyDataSize);
+    RawDataSize = DataSize - KeyDataSize;
 
-    if (PasswordProtected) {
+    if (KeyProtected) {
       EncRawDataSize = ALIGN_VALUE(RawDataSize, AES_BLOCK_SIZE);
-      ZeroMem ((UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize, EncRawDataSize);
-      CopyMem ((UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize, RawData, RawDataSize);
-      RawData = (UINT8 *)mVariableModuleGlobal->ScratchPasswordBuffer + mVariableModuleGlobal->ScratchPasswordBufferSize;
+      ZeroMem ((UINT8 *)mVariableModuleGlobal->ScratchKeyBuffer + mVariableModuleGlobal->ScratchKeyBufferSize, EncRawDataSize);
+      CopyMem ((UINT8 *)mVariableModuleGlobal->ScratchKeyBuffer + mVariableModuleGlobal->ScratchKeyBufferSize, RawData, RawDataSize);
+      RawData = (UINT8 *)mVariableModuleGlobal->ScratchKeyBuffer + mVariableModuleGlobal->ScratchKeyBufferSize;
     } else {
       EncRawDataSize = RawDataSize;
     }
 
-    if (EncRawDataSize > mVariableModuleGlobal->ScratchPasswordBufferSize - sizeof(VariablePasswordHashHeader) - sizeof(VariablePasswordDataHeader)) {
+    if (EncRawDataSize > mVariableModuleGlobal->ScratchKeyBufferSize - sizeof(VariableKeyHashHeader) - sizeof(VariableKeyDataHeader)) {
       Status = EFI_OUT_OF_RESOURCES;
       goto Done;
     }
@@ -3763,24 +3763,24 @@ VariableServiceSetVariableEx (
     //
     // Calculate Hash
     //
-    VariablePasswordHashHeader.PasswordHashType = PASSWORD_HASH_TYPE_SHA256;
-    VariablePasswordHashHeader.PasswordHashHeadSize = sizeof(VARIABLE_PASSWORD_HASH_HEADER);
+    VariableKeyHashHeader.KeyHashType = HASH_TYPE_SHA256;
+    VariableKeyHashHeader.KeyHashHeadSize = sizeof(VARIABLE_KEY_HASH_HEADER);
     if (Variable.CurrPtr != NULL) {
-      DEBUG((EFI_D_INFO, "Old PASSWORD_PROTECTED Variable Found!\n"));
-      OldVariablePasswordHashHeader = (VARIABLE_PASSWORD_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
+      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable Found!\n"));
+      OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
       DEBUG((EFI_D_INFO, "Old SALT - "));
-      InternalDumpData(OldVariablePasswordHashHeader->PasswordSalt, sizeof(OldVariablePasswordHashHeader->PasswordSalt));
+      InternalDumpData(OldVariableKeyHashHeader->KeySalt, sizeof(OldVariableKeyHashHeader->KeySalt));
       DEBUG((EFI_D_INFO, "\n"));
-      CopyMem(VariablePasswordHashHeader.PasswordSalt, OldVariablePasswordHashHeader->PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      CopyMem(VariableKeyHashHeader.KeySalt, OldVariableKeyHashHeader->KeySalt, sizeof(VariableKeyHashHeader.KeySalt));
 
-      Result = PasswordLibGenerateHash (
-                 PASSWORD_HASH_TYPE_SHA256,
-                 PasswordData + 1,
-                 PasswordData->PasswordSize,
-                 VariablePasswordHashHeader.PasswordSalt,
-                 sizeof(VariablePasswordHashHeader.PasswordSalt),
-                 VariablePasswordHashHeader.PasswordHash,
-                 sizeof(VariablePasswordHashHeader.PasswordHash)
+      Result = KeyLibGenerateHash (
+                 HASH_TYPE_SHA256,
+                 KeyData + 1,
+                 KeyData->KeySize,
+                 VariableKeyHashHeader.KeySalt,
+                 sizeof(VariableKeyHashHeader.KeySalt),
+                 VariableKeyHashHeader.KeyHash,
+                 sizeof(VariableKeyHashHeader.KeyHash)
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
@@ -3789,15 +3789,15 @@ VariableServiceSetVariableEx (
       //
       // Validation
       //
-      OldVariablePasswordHashHeader = (VARIABLE_PASSWORD_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
-      DEBUG((EFI_D_INFO, "Compare PASSWORD_PROTECTED Variable HASH\n"));
+      OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
+      DEBUG((EFI_D_INFO, "Compare KEY_PROTECTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
-      InternalDumpData(VariablePasswordHashHeader.PasswordHash, sizeof(VariablePasswordHashHeader.PasswordHash));
+      InternalDumpData(VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
       DEBUG((EFI_D_INFO, "Expected HASH - "));
-      InternalDumpData(OldVariablePasswordHashHeader->PasswordHash, sizeof(OldVariablePasswordHashHeader->PasswordHash));
+      InternalDumpData(OldVariableKeyHashHeader->KeyHash, sizeof(OldVariableKeyHashHeader->KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
-      if (CompareMem(OldVariablePasswordHashHeader->PasswordHash, VariablePasswordHashHeader.PasswordHash, sizeof(VariablePasswordHashHeader.PasswordHash)) != 0) {
+      if (CompareMem(OldVariableKeyHashHeader->KeyHash, VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash)) != 0) {
         DEBUG((EFI_D_INFO, "HASH mismatch!\n"));
         Status = EFI_SECURITY_VIOLATION;
         goto Done;
@@ -3805,34 +3805,34 @@ VariableServiceSetVariableEx (
         DEBUG((EFI_D_INFO, "HASH match!\n"));
       }
     } else {
-      DEBUG((EFI_D_INFO, "Old PASSWORD_PROTECTED Variable NOT Found!\n"));
+      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable NOT Found!\n"));
     }
 
     //
     // Update Data
     //
     if (RawDataSize != 0) {
-      DEBUG((EFI_D_INFO, "Update PASSWORD_PROTECTED Variable\n"));
+      DEBUG((EFI_D_INFO, "Update KEY_PROTECTED Variable\n"));
       //
       // Re-generate salt
       //
-      Result = PasswordLibGenerateSalt(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      Result = KeyLibGenerateSalt(VariableKeyHashHeader.KeySalt, sizeof(VariableKeyHashHeader.KeySalt));
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
         goto Done;
       }
       DEBUG((EFI_D_INFO, "New SALT - "));
-      InternalDumpData(VariablePasswordHashHeader.PasswordSalt, sizeof(VariablePasswordHashHeader.PasswordSalt));
+      InternalDumpData(VariableKeyHashHeader.KeySalt, sizeof(VariableKeyHashHeader.KeySalt));
       DEBUG((EFI_D_INFO, "\n"));
 
-      Result = PasswordLibGenerateHash(
-                 PASSWORD_HASH_TYPE_SHA256,
-                 PasswordData + 1,
-                 PasswordData->PasswordSize,
-                 VariablePasswordHashHeader.PasswordSalt,
-                 sizeof(VariablePasswordHashHeader.PasswordSalt),
-                 VariablePasswordHashHeader.PasswordHash,
-                 sizeof(VariablePasswordHashHeader.PasswordHash)
+      Result = KeyLibGenerateHash(
+                 HASH_TYPE_SHA256,
+                 KeyData + 1,
+                 KeyData->KeySize,
+                 VariableKeyHashHeader.KeySalt,
+                 sizeof(VariableKeyHashHeader.KeySalt),
+                 VariableKeyHashHeader.KeyHash,
+                 sizeof(VariableKeyHashHeader.KeyHash)
                  );
       if (!Result) {
         Status = EFI_OUT_OF_RESOURCES;
@@ -3840,29 +3840,29 @@ VariableServiceSetVariableEx (
       }
 
       CopyMem(
-        mVariableModuleGlobal->ScratchPasswordBuffer,
-        &VariablePasswordHashHeader,
-        sizeof(VariablePasswordHashHeader)
+        mVariableModuleGlobal->ScratchKeyBuffer,
+        &VariableKeyHashHeader,
+        sizeof(VariableKeyHashHeader)
         );
-      VariablePasswordDataHeader.PasswordDataType = PASSWORD_SYM_TYPE_AES;
-      VariablePasswordDataHeader.PasswordDataHeadSize = sizeof(VARIABLE_PASSWORD_DATA_HEADER);
-      VariablePasswordDataHeader.PasswordPlainDataSize = (UINT32)RawDataSize;
-      VariablePasswordDataHeader.PasswordDataSize = (UINT32)EncRawDataSize;
+      VariableKeyDataHeader.KeyDataType = SYM_TYPE_AES;
+      VariableKeyDataHeader.KeyDataHeadSize = sizeof(VARIABLE_KEY_DATA_HEADER);
+      VariableKeyDataHeader.KeyPlainDataSize = (UINT32)RawDataSize;
+      VariableKeyDataHeader.KeyDataSize = (UINT32)EncRawDataSize;
       CopyMem(
-        (VOID *)((UINTN)mVariableModuleGlobal->ScratchPasswordBuffer + sizeof(VariablePasswordHashHeader)),
-        &VariablePasswordDataHeader,
-        sizeof(VariablePasswordDataHeader)
+        (VOID *)((UINTN)mVariableModuleGlobal->ScratchKeyBuffer + sizeof(VariableKeyHashHeader)),
+        &VariableKeyDataHeader,
+        sizeof(VariableKeyDataHeader)
         );
-      if (PasswordProtected) {
-        Result = PasswordLibEncrypt (
-                   PASSWORD_SYM_TYPE_AES,
-                   PasswordData + 1,
-                   PasswordData->PasswordSize,
-                   VariablePasswordHashHeader.PasswordSalt,
-                   sizeof(VariablePasswordHashHeader.PasswordSalt),
+      if (KeyProtected) {
+        Result = KeyLibEncrypt (
+                   SYM_TYPE_AES,
+                   KeyData + 1,
+                   KeyData->KeySize,
+                   VariableKeyHashHeader.KeySalt,
+                   sizeof(VariableKeyHashHeader.KeySalt),
                    RawData,
                    EncRawDataSize,
-                   (VOID *)((UINTN)mVariableModuleGlobal->ScratchPasswordBuffer + sizeof(VariablePasswordHashHeader) + sizeof(VariablePasswordDataHeader)),
+                   (VOID *)((UINTN)mVariableModuleGlobal->ScratchKeyBuffer + sizeof(VariableKeyHashHeader) + sizeof(VariableKeyDataHeader)),
                    EncRawDataSize
                    );
         ZeroMem (RawData, RawDataSize);
@@ -3872,15 +3872,15 @@ VariableServiceSetVariableEx (
         }
       } else {
         CopyMem(
-          (VOID *)((UINTN)mVariableModuleGlobal->ScratchPasswordBuffer + sizeof(VariablePasswordHashHeader) + sizeof(VariablePasswordDataHeader)),
+          (VOID *)((UINTN)mVariableModuleGlobal->ScratchKeyBuffer + sizeof(VariableKeyHashHeader) + sizeof(VariableKeyDataHeader)),
           RawData,
           RawDataSize
           );
       }
-      Data = mVariableModuleGlobal->ScratchPasswordBuffer;
-      DataSize = sizeof(VariablePasswordHashHeader) + sizeof(VariablePasswordDataHeader) + EncRawDataSize;
+      Data = mVariableModuleGlobal->ScratchKeyBuffer;
+      DataSize = sizeof(VariableKeyHashHeader) + sizeof(VariableKeyDataHeader) + EncRawDataSize;
     } else {
-      DEBUG((EFI_D_INFO, "Delete PASSWORD_PROTECTED Variable\n"));
+      DEBUG((EFI_D_INFO, "Delete KEY_PROTECTED Variable\n"));
       Data = NULL;
       DataSize = 0;
     }
@@ -4656,13 +4656,13 @@ VariableCommonInitialize (
     return Status;
   }
 
-  mVariableModuleGlobal->ScratchPasswordBufferSize = mVariableModuleGlobal->MaxVariableSize;
-  if (mVariableModuleGlobal->ScratchPasswordBufferSize < mVariableModuleGlobal->MaxAuthVariableSize) {
-    mVariableModuleGlobal->ScratchPasswordBufferSize = mVariableModuleGlobal->MaxAuthVariableSize;
+  mVariableModuleGlobal->ScratchKeyBufferSize = mVariableModuleGlobal->MaxVariableSize;
+  if (mVariableModuleGlobal->ScratchKeyBufferSize < mVariableModuleGlobal->MaxAuthVariableSize) {
+    mVariableModuleGlobal->ScratchKeyBufferSize = mVariableModuleGlobal->MaxAuthVariableSize;
   }
 
-  mVariableModuleGlobal->ScratchPasswordBuffer = AllocateRuntimeZeroPool(mVariableModuleGlobal->ScratchPasswordBufferSize * 2);
-  if (mVariableModuleGlobal->ScratchPasswordBuffer == NULL) {
+  mVariableModuleGlobal->ScratchKeyBuffer = AllocateRuntimeZeroPool(mVariableModuleGlobal->ScratchKeyBufferSize * 2);
+  if (mVariableModuleGlobal->ScratchKeyBuffer == NULL) {
     FreePool(mVariableModuleGlobal);
     return EFI_OUT_OF_RESOURCES;
   }

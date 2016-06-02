@@ -11,8 +11,8 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 **/
 
-#ifndef __PASSWORD_LIB_H__
-#define __PASSWORD_LIB_H__
+#ifndef __KEY_LIB_H__
+#define __KEY_LIB_H__
 
 /**
   Generate Salt value.
@@ -25,16 +25,13 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 BOOLEAN
 EFIAPI
-PasswordLibGenerateSalt(
+KeyLibGenerateSalt(
   IN OUT UINT8  *SaltValue,
   IN UINTN      SaltSize
   );
 
-//
-// Only SHA256 is supported in this version
-//
-#define PASSWORD_HASH_TYPE_SHA256  0x000B
-#define PASSWORD_SYM_TYPE_AES      0x0006
+#define HASH_TYPE_SHA256  0x000B
+#define SYM_TYPE_AES      0x0006
 
 #define SHA256_DIGEST_SIZE 32
 #define AES_BLOCK_SIZE     16
@@ -43,12 +40,12 @@ PasswordLibGenerateSalt(
   Hash the data.
 
   @param[in]   HashType         Hash type
-  @param[in]   Password         Points to the password buffer
-  @param[in]   PasswordSize     Password buffer size
+  @param[in]   Key              Points to the key buffer
+  @param[in]   KeySize          Key buffer size
   @param[in]   SaltValue        Points to the salt buffer
   @param[in]   SaltSize         Size of the salt buffer
-  @param[out]  PasswordHash     Points to the hashed result
-  @param[in]   PasswordHashSize Size of the hash buffer
+  @param[out]  KeyHash          Points to the hashed result
+  @param[in]   KeyHashSize      Size of the hash buffer
 
   @retval      TRUE           Hash the data successfully.
   @retval      FALSE          Failed to hash the data.
@@ -56,14 +53,14 @@ PasswordLibGenerateSalt(
 **/
 BOOLEAN
 EFIAPI
-PasswordLibGenerateHash(
+KeyLibGenerateHash(
   IN   UINT32              HashType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
-  OUT  UINT8               *PasswordHash,
-  IN   UINTN               PasswordHashSize
+  OUT  UINT8               *KeyHash,
+  IN   UINTN               KeyHashSize
   );
 
 /**
@@ -72,8 +69,8 @@ PasswordLibGenerateHash(
   InputDataSize must be block size aligned.
 
   @param[in]   SymType        Symetric Encryption type
-  @param[in]   Password       Points to the password buffer
-  @param[in]   PasswordSize   Password buffer size
+  @param[in]   Key            Points to the key buffer
+  @param[in]   KeySize        Key buffer size
   @param[in]   SaltValue      Points to the salt buffer
   @param[in]   SaltSize       Size of the salt buffer
   @param[in]   InputData      Points to the input data
@@ -87,10 +84,10 @@ PasswordLibGenerateHash(
 **/
 BOOLEAN
 EFIAPI
-PasswordLibEncrypt(
+KeyLibEncrypt(
   IN   UINT32              SymType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,
@@ -105,8 +102,8 @@ PasswordLibEncrypt(
   InputDataSize must be block size aligned.
 
   @param[in]   SymType        Symetric Encryption type
-  @param[in]   Password       Points to the password buffer
-  @param[in]   PasswordSize   Password buffer size
+  @param[in]   Key            Points to the key buffer
+  @param[in]   KeySize        Key buffer size
   @param[in]   SaltValue      Points to the salt buffer
   @param[in]   SaltSize       Size of the salt buffer
   @param[in]   InputData      Points to the input data
@@ -120,10 +117,10 @@ PasswordLibEncrypt(
 **/
 BOOLEAN
 EFIAPI
-PasswordLibDecrypt(
+KeyLibDecrypt(
   IN   UINT32              SymType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,

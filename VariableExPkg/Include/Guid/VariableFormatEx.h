@@ -100,54 +100,54 @@ typedef struct {
 //
 // EDKII Variable driver extension for variable storage
 //
-#define PASSWORD_HASH_TYPE_SHA256  0x000B
+#define HASH_TYPE_SHA256           0x000B
 #define SHA256_DIGEST_SIZE         32
 
 typedef struct {
-  UINT32                      PasswordHashType;
-  UINT32                      PasswordHashHeadSize; // sizeof(VARIABLE_PASSWORD_HASH_HEADER)
-  UINT8                       PasswordHash[SHA256_DIGEST_SIZE];
-  UINT8                       PasswordSalt[SHA256_DIGEST_SIZE];
-} VARIABLE_PASSWORD_HASH_HEADER;
+  UINT32                      KeyHashType;
+  UINT32                      KeyHashHeadSize; // sizeof(VARIABLE_KEY_HASH_HEADER)
+  UINT8                       KeyHash[SHA256_DIGEST_SIZE];
+  UINT8                       KeySalt[SHA256_DIGEST_SIZE];
+} VARIABLE_KEY_HASH_HEADER;
 
-#define PASSWORD_SYM_TYPE_AES      0x0006
+#define SYM_TYPE_AES               0x0006
 #define AES_BLOCK_SIZE             16
 
 typedef struct {
-  UINT32                      PasswordDataType;
-  UINT32                      PasswordDataHeadSize;  // sizeof(VARIABLE_PASSWORD_DATA_HEADER)
-  UINT32                      PasswordPlainDataSize; // Plain text data size
-  UINT32                      PasswordDataSize;      // Data size
-} VARIABLE_PASSWORD_DATA_HEADER;
+  UINT32                      KeyDataType;
+  UINT32                      KeyDataHeadSize;  // sizeof(VARIABLE_KEY_DATA_HEADER)
+  UINT32                      KeyPlainDataSize; // Plain text data size
+  UINT32                      KeyDataSize;      // Data size
+} VARIABLE_KEY_DATA_HEADER;
 
 //
-// If EDKII_VARIABLE_PASSWORD_AUTHENTICATED is set, the binary layout is:
+// If EDKII_VARIABLE_KEY_AUTHENTICATED is set, the binary layout is:
 // +--------------------------------+
 // | (AUTHENTICATED_)VARIABLE_HEADER |
 // +--------------------------------+
 // |   Name                          |
-// +--------------------------------+ ---> +--------------------------------+
-// |                                 |      | VARIABLE_PASSWORD_HASH_HEADER  |
-// |                                 |      +--------------------------------+
-// |   Data                          |      | VARIABLE_PASSWORD_DATA_HEADER  |
-// |                                 |      +--------------------------------+
-// |                                 |      |   UserData (Plain Text)        |
-// +--------------------------------+ ---> +--------------------------------+
+// +--------------------------------+ ---> +---------------------------+
+// |                                 |      | VARIABLE_KEY_HASH_HEADER  |
+// |                                 |      +--------------------------+
+// |   Data                          |      | VARIABLE_KEY_DATA_HEADER  |
+// |                                 |      +--------------------------+
+// |                                 |      |   UserData (Plain Text)   |
+// +--------------------------------+ ---> +---------------------------+
 //
 
 //
-// If EDKII_VARIABLE_PASSWORD_PROTECTED is set, the binary layout is:
+// If EDKII_VARIABLE_KEY_PROTECTED is set, the binary layout is:
 // +--------------------------------+
 // | (AUTHENTICATED_)VARIABLE_HEADER |
 // +--------------------------------+
 // |   Name                          |
-// +--------------------------------+ ---> +--------------------------------+
-// |                                 |      | VARIABLE_PASSWORD_HASH_HEADER  |
-// |                                 |      +-------------------------------+
-// |   Data                          |      | VARIABLE_PASSWORD_DATA_HEADER  |
-// |                                 |      +-------------------------------+
-// |                                 |      |   UserData (Cypher Text)       |
-// +--------------------------------+ ---> +--------------------------------+
+// +--------------------------------+ ---> +---------------------------+
+// |                                 |      | VARIABLE_KEY_HASH_HEADER  |
+// |                                 |      +--------------------------+
+// |   Data                          |      | VARIABLE_KEY_DATA_HEADER  |
+// |                                 |      +--------------------------+
+// |                                 |      |   UserData (Cypher Text)  |
+// +--------------------------------+ ---> +---------------------------+
 //
 
 #pragma pack()

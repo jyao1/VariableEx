@@ -46,7 +46,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 #include <Guid/FaultTolerantWrite.h>
 #include <Guid/VarErrorFlag.h>
 
-#include <Library/PasswordLib.h>
+#include <Library/KeyLib.h>
 
 #define EFI_VARIABLE_ATTRIBUTES_MASK (EFI_VARIABLE_NON_VOLATILE | \
                                       EFI_VARIABLE_BOOTSERVICE_ACCESS | \
@@ -110,8 +110,8 @@ typedef struct {
   CHAR8           *PlatformLang;
   CHAR8           Lang[ISO_639_2_ENTRY_SIZE + 1];
   EFI_FIRMWARE_VOLUME_BLOCK_PROTOCOL *FvbInstance;
-  VOID            *ScratchPasswordBuffer;
-  UINTN           ScratchPasswordBufferSize;
+  VOID            *ScratchKeyBuffer;
+  UINTN           ScratchKeyBufferSize;
 } VARIABLE_MODULE_GLOBAL;
 
 /**

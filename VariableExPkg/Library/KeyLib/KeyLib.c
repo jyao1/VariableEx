@@ -13,14 +13,14 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 
 #include <Uefi.h>
 #include <Library/DebugLib.h>
-#include <Library/PasswordLib.h>
+#include <Library/KeyLib.h>
 #include <Library/BaseCryptLib.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/aes.h>
 
-#define PASSWORD_AES_KEY_BIT_SIZE       256
-#define PASSWORD_PBKDF2_ITERATION_COUNT 15
+#define DEFAULT_AES_KEY_BIT_SIZE       256
+#define DEFAULT_PBKDF2_ITERATION_COUNT 15
 
 /**
   Generate Salt value.
@@ -33,7 +33,7 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 BOOLEAN
 EFIAPI
-PasswordLibGenerateSalt (
+KeyLibGenerateSalt (
   IN OUT UINT8  *SaltValue,
   IN UINTN      SaltSize
   )
@@ -50,12 +50,12 @@ PasswordLibGenerateSalt (
   Hash the data.
 
   @param[in]   HashType         Hash type
-  @param[in]   Password         Points to the password buffer
-  @param[in]   PasswordSize     Password buffer size
+  @param[in]   Key              Points to the key buffer
+  @param[in]   KeySize          Key buffer size
   @param[in]   SaltValue        Points to the salt buffer
   @param[in]   SaltSize         Size of the salt buffer
-  @param[out]  PasswordHash     Points to the hashed result
-  @param[in]   PasswordHashSize Size of the hash buffer
+  @param[out]  KeyHash          Points to the hashed result
+  @param[in]   KeyHashSize      Size of the hash buffer
 
   @retval      TRUE           Hash the data successfully.
   @retval      FALSE          Failed to hash the data.
@@ -63,27 +63,27 @@ PasswordLibGenerateSalt (
 **/
 BOOLEAN
 EFIAPI
-PasswordLibGenerateHash(
+KeyLibGenerateHash(
   IN   UINT32              HashType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
-  OUT  UINT8               *PasswordHash,
-  IN   UINTN               PasswordHashSize
+  OUT  UINT8               *KeyHash,
+  IN   UINTN               KeyHashSize
   )
 {
   BOOLEAN                     Status;
   SHA256_CTX                  Hash;
 
-  if (HashType != PASSWORD_HASH_TYPE_SHA256) {
+  if (HashType != HASH_TYPE_SHA256) {
     return FALSE;
   }
-  if (PasswordHashSize != SHA256_DIGEST_SIZE) {
+  if (KeyHashSize != SHA256_DIGEST_SIZE) {
     return FALSE;
   }
 
-  if ((Password == NULL) || (SaltValue == NULL) || (PasswordHash == NULL)) {
+  if ((Key == NULL) || (SaltValue == NULL) || (KeyHash == NULL)) {
     return FALSE;
   }
 
@@ -96,12 +96,12 @@ PasswordLibGenerateHash(
   if (!Status) {
     goto Done;
   }
-  Status = Sha256Update(&Hash, Password, PasswordSize);
+  Status = Sha256Update(&Hash, Key, KeySize);
   if (!Status) {
     goto Done;
   }
 
-  Status = Sha256Final(&Hash, PasswordHash);
+  Status = Sha256Final(&Hash, KeyHash);
 Done:
   return Status;
 }
@@ -112,8 +112,8 @@ Done:
   InputDataSize must be block size aligned.
 
   @param[in]   SymType        Symetric Encryption type
-  @param[in]   Password       Points to the password buffer
-  @param[in]   PasswordSize   Password buffer size
+  @param[in]   Key            Points to the key buffer
+  @param[in]   KeySize        Key buffer size
   @param[in]   SaltValue      Points to the salt buffer
   @param[in]   SaltSize       Size of the salt buffer
   @param[in]   InputData      Points to the input data
@@ -127,10 +127,10 @@ Done:
 **/
 BOOLEAN
 EFIAPI
-PasswordLibEncrypt(
+KeyLibEncrypt(
   IN   UINT32              SymType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,
@@ -140,11 +140,11 @@ PasswordLibEncrypt(
   )
 {
   INTN                        Status;
-  UINT8                       Key[(PASSWORD_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
+  UINT8                       KeyBuffer[(DEFAULT_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
   UINT8                       *Ivec;
   AES_KEY                     AesKey;
 
-  if (SymType != PASSWORD_SYM_TYPE_AES) {
+  if (SymType != SYM_TYPE_AES) {
     return FALSE;
   }
 
@@ -155,30 +155,30 @@ PasswordLibEncrypt(
     return FALSE;
   }
 
-  if ((Password == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
+  if ((Key == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
     return FALSE;
   }
-  if ((PasswordSize > INT_MAX) || (SaltSize > INT_MAX)) {
+  if ((KeySize > INT_MAX) || (SaltSize > INT_MAX)) {
     return FALSE;
   }
 
   Status = PKCS5_PBKDF2_HMAC(
-             Password,
-             (INT32)PasswordSize,
+             Key,
+             (INT32)KeySize,
              SaltValue,
              (INT32)SaltSize,
-             PASSWORD_PBKDF2_ITERATION_COUNT,
+             DEFAULT_PBKDF2_ITERATION_COUNT,
              EVP_sha256(),
-             sizeof(Key),
-             Key
+             sizeof(KeyBuffer),
+             KeyBuffer
              );
   if (Status == 0) {
     return FALSE;
   }
 
-  Ivec = Key + (PASSWORD_AES_KEY_BIT_SIZE / 8);
+  Ivec = KeyBuffer + (DEFAULT_AES_KEY_BIT_SIZE / 8);
 
-  Status = AES_set_encrypt_key(Key, PASSWORD_AES_KEY_BIT_SIZE, &AesKey);
+  Status = AES_set_encrypt_key(KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE, &AesKey);
   if (Status != 0) {
     return FALSE;
   }
@@ -194,8 +194,8 @@ PasswordLibEncrypt(
   InputDataSize must be block size aligned.
 
   @param[in]   SymType        Symetric Encryption type
-  @param[in]   Password       Points to the password buffer
-  @param[in]   PasswordSize   Password buffer size
+  @param[in]   Key            Points to the key buffer
+  @param[in]   KeySize        Key buffer size
   @param[in]   SaltValue      Points to the salt buffer
   @param[in]   SaltSize       Size of the salt buffer
   @param[in]   InputData      Points to the input data
@@ -209,10 +209,10 @@ PasswordLibEncrypt(
 **/
 BOOLEAN
 EFIAPI
-PasswordLibDecrypt(
+KeyLibDecrypt(
   IN   UINT32              SymType,
-  IN   VOID                *Password,
-  IN   UINTN               PasswordSize,
+  IN   VOID                *Key,
+  IN   UINTN               KeySize,
   IN   UINT8               *SaltValue,
   IN   UINTN               SaltSize,
   IN   VOID                *InputData,
@@ -222,11 +222,11 @@ PasswordLibDecrypt(
   )
 {
   INTN                        Status;
-  UINT8                       Key[(PASSWORD_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
+  UINT8                       KeyBuffer[(DEFAULT_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
   UINT8                       *Ivec;
   AES_KEY                     AesKey;
 
-  if (SymType != PASSWORD_SYM_TYPE_AES) {
+  if (SymType != SYM_TYPE_AES) {
     return FALSE;
   }
 
@@ -237,30 +237,30 @@ PasswordLibDecrypt(
     return FALSE;
   }
 
-  if ((Password == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
+  if ((Key == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
     return FALSE;
   }
-  if ((PasswordSize > INT_MAX) || (SaltSize > INT_MAX)) {
+  if ((KeySize > INT_MAX) || (SaltSize > INT_MAX)) {
     return FALSE;
   }
 
   Status = PKCS5_PBKDF2_HMAC(
-             Password,
-             (INT32)PasswordSize,
+             Key,
+             (INT32)KeySize,
              SaltValue,
              (INT32)SaltSize,
-             PASSWORD_PBKDF2_ITERATION_COUNT,
+             DEFAULT_PBKDF2_ITERATION_COUNT,
              EVP_sha256(),
-             sizeof(Key),
-             Key
+             sizeof(KeyBuffer),
+             KeyBuffer
              );
   if (Status == 0) {
     return FALSE;
   }
 
-  Ivec = Key + (PASSWORD_AES_KEY_BIT_SIZE / 8);
+  Ivec = KeyBuffer + (DEFAULT_AES_KEY_BIT_SIZE / 8);
 
-  Status = AES_set_decrypt_key(Key, PASSWORD_AES_KEY_BIT_SIZE, &AesKey);
+  Status = AES_set_decrypt_key(KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE, &AesKey);
   if (Status != 0) {
     return FALSE;
   }

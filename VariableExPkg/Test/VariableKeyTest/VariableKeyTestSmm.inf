@@ -1,5 +1,5 @@
 ## @file
-#  The unit test for password based variable managment in DXE phase.
+#  The unit test for key based variable managment in SMM phase.
 #
 #  Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
 #  This program and the accompanying materials
@@ -13,11 +13,12 @@
 
 [Defines]
   INF_VERSION                    = 0x00010005
-  BASE_NAME                      = VariablePasswordTestApp
-  FILE_GUID                      = 40F1559C-13DE-4A69-A79F-EE1F312F109C
-  MODULE_TYPE                    = UEFI_APPLICATION
+  BASE_NAME                      = VariableKeyTestSmm
+  FILE_GUID                      = 1948F3AF-DAC5-4F5C-BC60-C7BCA6064E15
+  MODULE_TYPE                    = DXE_SMM_DRIVER
   VERSION_STRING                 = 1.0
-  ENTRY_POINT                    = UefiMain
+  PI_SPECIFICATION_VERSION       = 0x0001000A
+  ENTRY_POINT                    = SmmMain
 
 #
 # The following information is for reference only and not required by the build tools.
@@ -26,19 +27,23 @@
 #
 
 [Sources]
-  VariablePasswordTestApp.c
+  VariableKeyTestCommon.c
+  VariableKeyTestSmm.c
 
 [Packages]
   MdePkg/MdePkg.dec
+  MdeModulePkg/MdeModulePkg.dec
   VariableExPkg/VariableExPkg.dec
 
 [LibraryClasses]
-  UefiApplicationEntryPoint
-  UefiLib
-  UefiBootServicesTableLib
-  UefiRuntimeServicesTableLib
+  UefiDriverEntryPoint
+  SmmServicesTableLib
   BaseMemoryLib
   MemoryAllocationLib
-  
+
 [Protocols]
-  gEdkiiVariableExProtocolGuid
+  gEdkiiSmmVariableExProtocolGuid
+
+[Depex]
+  gEdkiiSmmVariableExProtocolGuid AND
+  gEfiVariableWriteArchProtocolGuid

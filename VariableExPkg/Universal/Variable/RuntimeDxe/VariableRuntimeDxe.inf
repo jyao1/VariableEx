@@ -67,7 +67,7 @@
   TpmMeasurementLib
   AuthVariableLib
   VarCheckLib
-  PasswordLib
+  KeyLib
 
 [Protocols]
   gEfiFirmwareVolumeBlockProtocolGuid           ## CONSUMES

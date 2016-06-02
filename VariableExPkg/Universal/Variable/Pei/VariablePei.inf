@@ -46,7 +46,7 @@
   DebugLib
   PeiServicesTablePointerLib
   PeiServicesLib
-  PasswordLib
+  KeyLib
 
 [Guids]
   ## CONSUMES             ## GUID # Variable store header

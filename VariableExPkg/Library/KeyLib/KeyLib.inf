@@ -1,5 +1,5 @@
 ##  @file
-#  This library implements the password management functions.
+#  This library implements the key management functions.
 #
 #  Copyright (c) 2016, Intel Corporation. All rights reserved. <BR>
 #
@@ -15,18 +15,18 @@
 
 [Defines]
   INF_VERSION                    = 0x00010006
-  BASE_NAME                      = PasswordLib
+  BASE_NAME                      = KeyLib
   FILE_GUID                      = 15795347-5515-462D-96B5-7955D2116B51
   MODULE_TYPE                    = UEFI_DRIVER
   VERSION_STRING                 = 1.0
-  LIBRARY_CLASS                  = PasswordLib
+  LIBRARY_CLASS                  = KeyLib
 
 #
 #  VALID_ARCHITECTURES           = IA32 X64 IPF EBC
 #
 
 [Sources.common]
-  PasswordLib.c
+  KeyLib.c
 
 [Packages]
   MdePkg/MdePkg.dec

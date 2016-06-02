@@ -1,5 +1,5 @@
 ## @file
-# This package provides password based integrity and confidentiality support
+# This package provides key based integrity and confidentiality support
 # for UEFI variable.
 #
 # Copyright (c) 2016, Intel Corporation. All rights reserved.<BR>
@@ -105,7 +105,7 @@
   IntrinsicLib|CryptoPkg/Library/IntrinsicLib/IntrinsicLib.inf
   OpensslLib|CryptoPkg/Library/OpensslLib/OpensslLib.inf
 
-  PasswordLib|VariableExPkg/Library/PasswordLib/PasswordLib.inf
+  KeyLib|VariableExPkg/Library/KeyLib/KeyLib.inf
 
 [LibraryClasses.common.PEI_CORE]
   HobLib|MdePkg/Library/PeiHobLib/PeiHobLib.inf
@@ -189,12 +189,12 @@
   VariableExPkg/Universal/Variable/Pei/VariablePei.inf
   VariableExPkg/Universal/Variable/RuntimeDxe/VariableRuntimeDxe.inf
 
-  VariableExPkg/Test/VariablePasswordTest/VariablePasswordTestApp.inf
-  VariableExPkg/Test/VariablePasswordTest/VariablePasswordTestPeim.inf
+  VariableExPkg/Test/VariableKeyTest/VariableKeyTestApp.inf
+  VariableExPkg/Test/VariableKeyTest/VariableKeyTestPeim.inf
   
 [Components.IA32, Components.X64]
   VariableExPkg/Universal/Variable/RuntimeDxe/VariableSmm.inf
   VariableExPkg/Universal/Variable/RuntimeDxe/VariableSmmRuntimeDxe.inf
 
-  VariableExPkg/Test/VariablePasswordTest/VariablePasswordTestSmm.inf
+  VariableExPkg/Test/VariableKeyTest/VariableKeyTestSmm.inf
 
