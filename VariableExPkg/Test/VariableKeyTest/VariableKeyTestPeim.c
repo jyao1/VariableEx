@@ -138,9 +138,9 @@ PeimMain(
   IN CONST EFI_PEI_SERVICES          **PeiServices
   )
 {
-  KeyAuthTest(TestPhasePei);
+  KeyAuthenticatedTest(TestPhasePei);
 
-  KeyProtectTest(TestPhasePei);
+  KeyEncryptedTest(TestPhasePei);
 
   return EFI_SUCCESS;
 }

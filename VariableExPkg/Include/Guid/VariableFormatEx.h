@@ -136,7 +136,7 @@ typedef struct {
 //
 
 //
-// If EDKII_VARIABLE_KEY_PROTECTED is set, the binary layout is:
+// If EDKII_VARIABLE_KEY_ENCRYPTED is set, the binary layout is:
 // +--------------------------------+
 // | (AUTHENTICATED_)VARIABLE_HEADER |
 // +--------------------------------+

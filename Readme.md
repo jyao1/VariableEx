@@ -16,7 +16,7 @@ Just build it as a normal EDKII package.
 VariableExPkg\Include\Protocol\VariableEx.h, VariableExPkg\Include\Protocol\SmmVariableEx.h)
 Below attributes extension is added:
   EDKII_VARIABLE_KEY_AUTHENTICATED is for the key-based integrity.
-  EDKII_VARIABLE_KEY_PROTECTED is for the key-based confidentiality.
+  EDKII_VARIABLE_KEY_ENCRYPTED is for the key-based confidentiality.
 
 2) EDKII Variable Storage extension: (VariableExPkg\Include\Guid\VariableFormatEx.h) 
 The variable storage is updated to support the key based HASH and data encryption.
@@ -26,7 +26,7 @@ It is a library to provide the generic key-based crypto functions.
 
 4) Variable driver: (VariableExPkg\Universal\Variable)
 Both Pei variable driver and RuntimeDxe/Smm variable driver are updated to support the
-key based authentication and protection.
+key based authentication and encryption.
 A platform may use these 2 drivers to replace the variable drivers defined in MdeModulePkg.
 
 5) Unit Test: (VariableExPkg\Test\VariableKeyTest)

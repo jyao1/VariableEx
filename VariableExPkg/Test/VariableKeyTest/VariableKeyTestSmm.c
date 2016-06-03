@@ -136,9 +136,9 @@ SmmMain(
   Status = gSmst->SmmLocateProtocol (&gEdkiiSmmVariableExProtocolGuid, NULL, (VOID **)&mSmmVariable);
   ASSERT_EFI_ERROR (Status);
 
-  KeyAuthTest(TestPhaseSmm);
+  KeyAuthenticatedTest(TestPhaseSmm);
 
-  KeyProtectTest(TestPhaseSmm);
+  KeyEncryptedTest(TestPhaseSmm);
 
   return EFI_SUCCESS;
 }

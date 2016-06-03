@@ -321,12 +321,12 @@ UserDataSizeOfVariable (
 
   UserDataSize = DataSizeOfVariable(Variable, AuthFlag);
   if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ) {
     VARIABLE_KEY_DATA_HEADER *DataHeader;
 
     ASSERT(UserDataSize > sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
     UserDataSize -= (sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
-	
+
     DataHeader = (VARIABLE_KEY_DATA_HEADER *)(GetVariableDataPtr(Variable, Variable, AuthFlag) + sizeof(VARIABLE_KEY_HASH_HEADER));
     UserDataSize = DataHeader->KeyPlainDataSize;
   }
@@ -428,7 +428,7 @@ GetVariableUserDataPtr (
 
   Value =  (UINTN) GetVariableDataPtr (Variable, VariableHeader, AuthFlag);
   if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ) {
     Value += sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER);
   }
 
@@ -1195,7 +1195,7 @@ PeiGetVariableEx (
       return EFI_INVALID_PARAMETER;
     }
 
-    if ((((VARIABLE_HEADER_EX *)VariableHeader)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0) {
+    if ((((VARIABLE_HEADER_EX *)VariableHeader)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) == 0) {
       GetVariableNameOrData (&StoreInfo, GetVariableUserDataPtr (Variable.CurrPtr, VariableHeader, StoreInfo.AuthFlag), VarDataSize, Data);
     } else {
       UINTN                         EncVarDataSize;
@@ -1207,9 +1207,9 @@ PeiGetVariableEx (
       UINTN                         ScratchBufferSize;
       EFI_HOB_GUID_TYPE             *GuidHob;
 
-      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_KEY_PROTECTED - %S(%g)\n", VariableName, VariableGuid));
+      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_KEY_ENCRYPTED - %S(%g)\n", VariableName, VariableGuid));
 
-      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0)) {
+      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) == 0)) {
         return EFI_INVALID_PARAMETER;
       }
 
@@ -1227,7 +1227,7 @@ PeiGetVariableEx (
       VariableKeyHashHeader.KeyHashType = HASH_TYPE_SHA256;
       VariableKeyHashHeader.KeyHashHeadSize = sizeof(VARIABLE_KEY_HASH_HEADER);
 
-      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable Found!\n"));
+      DEBUG((EFI_D_INFO, "Old KEY_ENCRYPTED Variable Found!\n"));
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr (Variable.CurrPtr, VariableHeader, StoreInfo.AuthFlag);
       DEBUG((EFI_D_INFO, "Old SALT - "));
       InternalDumpData(OldVariableKeyHashHeader->KeySalt, sizeof(OldVariableKeyHashHeader->KeySalt));
@@ -1251,7 +1251,7 @@ PeiGetVariableEx (
       // Validation
       //
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr, VariableHeader, StoreInfo.AuthFlag);
-      DEBUG((EFI_D_INFO, "Compare KEY_PROTECTED Variable HASH\n"));
+      DEBUG((EFI_D_INFO, "Compare KEY_ENCRYPTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
       InternalDumpData(VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
@@ -1298,7 +1298,7 @@ PeiGetVariableEx (
         return EFI_OUT_OF_RESOURCES;
       }
       CopyMem (Data, ScratchBuffer, VarDataSize);
-	  ZeroMem (ScratchBuffer, VarDataSize);
+      ZeroMem (ScratchBuffer, VarDataSize);
     }
 
     if (Attributes != NULL) {

@@ -28,7 +28,7 @@ typedef struct _EDKII_VARIABLE_EX_PROTOCOL  EDKII_VARIABLE_EX_PROTOCOL;
 // EDKII extension for Variable AttributesEx
 //
 #define EDKII_VARIABLE_KEY_AUTHENTICATED      0x01
-#define EDKII_VARIABLE_KEY_PROTECTED          0x02
+#define EDKII_VARIABLE_KEY_ENCRYPTED          0x02
 
 //
 // EDKII extension
@@ -47,7 +47,7 @@ typedef struct {
 } EDKII_VARIABLE_KEY_DATA;
 
 //
-// If EDKII_VARIABLE_KEY_AUTHENTICATED or EDKII_VARIABLE_KEY_PROTECTED is set,
+// If EDKII_VARIABLE_KEY_AUTHENTICATED or EDKII_VARIABLE_KEY_ENCRYPTED is set,
 // the input data for SetVariableEx is:
 // +-------------------------+
 // | EDKII_VARIABLE_KEY_DATA  |
@@ -58,7 +58,7 @@ typedef struct {
 //
 
 //
-// If EDKII_VARIABLE_KEY_PROTECTED is set,
+// If EDKII_VARIABLE_KEY_ENCRYPTED is set,
 // the input data for GetVariableEx is:
 // +-------------------------+
 // | EDKII_VARIABLE_KEY_DATA  |

@@ -650,12 +650,12 @@ UserDataSizeOfVariable (
 
   UserDataSize = DataSizeOfVariable(Variable);
   if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ) {
     VARIABLE_KEY_DATA_HEADER *DataHeader;
 
     ASSERT(UserDataSize > sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
     UserDataSize -= (sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER));
-	
+
     DataHeader = (VARIABLE_KEY_DATA_HEADER *)(GetVariableDataPtr(Variable) + sizeof(VARIABLE_KEY_HASH_HEADER));
     UserDataSize = DataHeader->KeyPlainDataSize;
   }
@@ -770,7 +770,7 @@ GetVariableUserDataPtr (
 
   Value =  (UINTN) GetVariableDataPtr (Variable);
   if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ) {
     Value += sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER);
   }
 
@@ -819,7 +819,7 @@ GetVariableUserDataOffset (
 
   Value = GetVariableDataOffset (Variable);
   if (((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
-      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ) {
+      ((((VARIABLE_HEADER_EX *)Variable)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ) {
     Value += sizeof(VARIABLE_KEY_HASH_HEADER) + sizeof(VARIABLE_KEY_DATA_HEADER);
   }
 
@@ -3084,7 +3084,7 @@ VariableServiceGetVariableEx (
       goto Done;
     }
 
-    if ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0) {
+    if ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) == 0) {
       CopyMem (Data, GetVariableUserDataPtr (Variable.CurrPtr), VarDataSize);
     } else {
       UINTN                         EncVarDataSize;
@@ -3093,9 +3093,9 @@ VariableServiceGetVariableEx (
       VARIABLE_KEY_HASH_HEADER      *OldVariableKeyHashHeader;
       BOOLEAN                       Result;
 
-      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_KEY_PROTECTED - %S(%g)\n", VariableName, &VendorGuid));
+      DEBUG((EFI_D_INFO, "Get EDKII_VARIABLE_KEY_ENCRYPTED - %S(%g)\n", VariableName, &VendorGuid));
 
-      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) == 0)) {
+      if ((AttributesEx == NULL) || ((*AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) == 0)) {
         return EFI_INVALID_PARAMETER;
       }
 
@@ -3115,7 +3115,7 @@ VariableServiceGetVariableEx (
       VariableKeyHashHeader.KeyHashType = HASH_TYPE_SHA256;
       VariableKeyHashHeader.KeyHashHeadSize = sizeof(VARIABLE_KEY_HASH_HEADER);
 
-      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable Found!\n"));
+      DEBUG((EFI_D_INFO, "Old KEY_ENCRYPTED Variable Found!\n"));
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr (Variable.CurrPtr);
       DEBUG((EFI_D_INFO, "Old SALT - "));
       InternalDumpData(OldVariableKeyHashHeader->KeySalt, sizeof(OldVariableKeyHashHeader->KeySalt));
@@ -3140,7 +3140,7 @@ VariableServiceGetVariableEx (
       // Validation
       //
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
-      DEBUG((EFI_D_INFO, "Compare KEY_PROTECTED Variable HASH\n"));
+      DEBUG((EFI_D_INFO, "Compare KEY_ENCRYPTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
       InternalDumpData(VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
@@ -3177,7 +3177,7 @@ VariableServiceGetVariableEx (
         goto Done;
       }
       CopyMem (Data, mVariableModuleGlobal->ScratchKeyBuffer, VarDataSize);
-	  ZeroMem (mVariableModuleGlobal->ScratchKeyBuffer, VarDataSize);
+      ZeroMem (mVariableModuleGlobal->ScratchKeyBuffer, VarDataSize);
     }
     if (Attributes != NULL) {
       *Attributes = Variable.CurrPtr->Attributes;
@@ -3702,8 +3702,8 @@ VariableServiceSetVariableEx (
   mPendingAttributesEx = 0;
   if (((AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0) ||
       ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_AUTHENTICATED) != 0)) ||
-      ((AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ||
-      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0)) ) {
+      ((AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ||
+      ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0)) ) {
     VOID                          *RawData;
     UINTN                         RawDataSize;
     UINTN                         EncRawDataSize;
@@ -3713,17 +3713,17 @@ VariableServiceSetVariableEx (
     VARIABLE_KEY_HASH_HEADER      *OldVariableKeyHashHeader;
     VARIABLE_KEY_DATA_HEADER      VariableKeyDataHeader;
     BOOLEAN                       Result;
-    BOOLEAN                       KeyProtected;
+    BOOLEAN                       KeyEncrypted;
 
-    if (((AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0) ||
-        ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_PROTECTED) != 0)) ) {
-      KeyProtected = TRUE;
+    if (((AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) ||
+        ((Variable.CurrPtr != NULL) && ((((VARIABLE_HEADER_EX *)Variable.CurrPtr)->AttributesEx & EDKII_VARIABLE_KEY_ENCRYPTED) != 0)) ) {
+      KeyEncrypted = TRUE;
     } else {
-      KeyProtected = FALSE;
+      KeyEncrypted = FALSE;
     }
 
-    if (KeyProtected) {
-      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_KEY_PROTECTED - %S(%g)\n", VariableName, VendorGuid));
+    if (KeyEncrypted) {
+      DEBUG((EFI_D_INFO, "EDKII_VARIABLE_KEY_ENCRYPTED - %S(%g)\n", VariableName, VendorGuid));
     } else {
       DEBUG((EFI_D_INFO, "EDKII_VARIABLE_KEY_AUTHENTICATED - %S(%g)\n", VariableName, VendorGuid));
     }
@@ -3746,7 +3746,7 @@ VariableServiceSetVariableEx (
     RawData = (VOID *)((UINTN)Data + KeyDataSize);
     RawDataSize = DataSize - KeyDataSize;
 
-    if (KeyProtected) {
+    if (KeyEncrypted) {
       EncRawDataSize = ALIGN_VALUE(RawDataSize, AES_BLOCK_SIZE);
       ZeroMem ((UINT8 *)mVariableModuleGlobal->ScratchKeyBuffer + mVariableModuleGlobal->ScratchKeyBufferSize, EncRawDataSize);
       CopyMem ((UINT8 *)mVariableModuleGlobal->ScratchKeyBuffer + mVariableModuleGlobal->ScratchKeyBufferSize, RawData, RawDataSize);
@@ -3766,7 +3766,7 @@ VariableServiceSetVariableEx (
     VariableKeyHashHeader.KeyHashType = HASH_TYPE_SHA256;
     VariableKeyHashHeader.KeyHashHeadSize = sizeof(VARIABLE_KEY_HASH_HEADER);
     if (Variable.CurrPtr != NULL) {
-      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable Found!\n"));
+      DEBUG((EFI_D_INFO, "Old KEY_ENCRYPTED Variable Found!\n"));
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
       DEBUG((EFI_D_INFO, "Old SALT - "));
       InternalDumpData(OldVariableKeyHashHeader->KeySalt, sizeof(OldVariableKeyHashHeader->KeySalt));
@@ -3790,7 +3790,7 @@ VariableServiceSetVariableEx (
       // Validation
       //
       OldVariableKeyHashHeader = (VARIABLE_KEY_HASH_HEADER *)GetVariableDataPtr(Variable.CurrPtr);
-      DEBUG((EFI_D_INFO, "Compare KEY_PROTECTED Variable HASH\n"));
+      DEBUG((EFI_D_INFO, "Compare KEY_ENCRYPTED Variable HASH\n"));
       DEBUG((EFI_D_INFO, "Input    HASH - "));
       InternalDumpData(VariableKeyHashHeader.KeyHash, sizeof(VariableKeyHashHeader.KeyHash));
       DEBUG((EFI_D_INFO, "\n"));
@@ -3805,14 +3805,14 @@ VariableServiceSetVariableEx (
         DEBUG((EFI_D_INFO, "HASH match!\n"));
       }
     } else {
-      DEBUG((EFI_D_INFO, "Old KEY_PROTECTED Variable NOT Found!\n"));
+      DEBUG((EFI_D_INFO, "Old KEY_ENCRYPTED Variable NOT Found!\n"));
     }
 
     //
     // Update Data
     //
     if (RawDataSize != 0) {
-      DEBUG((EFI_D_INFO, "Update KEY_PROTECTED Variable\n"));
+      DEBUG((EFI_D_INFO, "Update KEY_ENCRYPTED Variable\n"));
       //
       // Re-generate salt
       //
@@ -3853,7 +3853,7 @@ VariableServiceSetVariableEx (
         &VariableKeyDataHeader,
         sizeof(VariableKeyDataHeader)
         );
-      if (KeyProtected) {
+      if (KeyEncrypted) {
         Result = KeyLibEncrypt (
                    SYM_TYPE_AES,
                    KeyData + 1,
@@ -3880,11 +3880,11 @@ VariableServiceSetVariableEx (
       Data = mVariableModuleGlobal->ScratchKeyBuffer;
       DataSize = sizeof(VariableKeyHashHeader) + sizeof(VariableKeyDataHeader) + EncRawDataSize;
     } else {
-      DEBUG((EFI_D_INFO, "Delete KEY_PROTECTED Variable\n"));
+      DEBUG((EFI_D_INFO, "Delete KEY_ENCRYPTED Variable\n"));
       Data = NULL;
       DataSize = 0;
     }
-	mPendingAttributesEx = AttributesEx;
+    mPendingAttributesEx = AttributesEx;
   }
 
   if (mVariableModuleGlobal->VariableGlobal.AuthSupport) {

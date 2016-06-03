@@ -138,9 +138,9 @@ UefiMain(
   Status = gBS->LocateProtocol(&gEdkiiVariableExProtocolGuid, NULL, (VOID **)&mVariable);
   ASSERT_EFI_ERROR(Status);
 
-  KeyAuthTest(TestPhaseDxe);
+  KeyAuthenticatedTest(TestPhaseDxe);
 
-  KeyProtectTest(TestPhaseDxe);
+  KeyEncryptedTest(TestPhaseDxe);
 
   return EFI_SUCCESS;
 }

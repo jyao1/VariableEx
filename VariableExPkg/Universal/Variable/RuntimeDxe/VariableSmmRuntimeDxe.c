@@ -624,7 +624,7 @@ RuntimeServiceGetVariableEx (
   SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX  *SmmVariableHeader;
   UINTN                                        TempDataSize;
   UINTN                                        VariableNameSize;
-  BOOLEAN                                      IsProtected;
+  BOOLEAN                                      IsEncrypted;
 
   if (VariableName == NULL || VendorGuid == NULL || DataSize == NULL) {
     return EFI_INVALID_PARAMETER;
@@ -634,10 +634,10 @@ RuntimeServiceGetVariableEx (
   VariableNameSize      = StrSize (VariableName);
   SmmVariableHeader     = NULL;
 
-  if ((AttributesEx != NULL) && ((*AttributesEx) & EDKII_VARIABLE_KEY_PROTECTED) != 0) {
-    IsProtected = TRUE;
+  if ((AttributesEx != NULL) && ((*AttributesEx) & EDKII_VARIABLE_KEY_ENCRYPTED) != 0) {
+    IsEncrypted = TRUE;
   } else {
-    IsProtected = FALSE;
+    IsEncrypted = FALSE;
   }
 
   //
@@ -646,7 +646,7 @@ RuntimeServiceGetVariableEx (
   if (VariableNameSize > mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name)) {
     return EFI_INVALID_PARAMETER;
   }
-  if (IsProtected) {
+  if (IsEncrypted) {
     if (*DataSize > mVariableBufferPayloadSize - OFFSET_OF(SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize) {
       return EFI_INVALID_PARAMETER;
     }
@@ -664,7 +664,7 @@ RuntimeServiceGetVariableEx (
     //
     TempDataSize = mVariableBufferPayloadSize - OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) - VariableNameSize;
   }
-  if (IsProtected) {
+  if (IsEncrypted) {
     TempDataSize = *DataSize;
   }
   PayloadSize = OFFSET_OF (SMM_VARIABLE_COMMUNICATE_ACCESS_VARIABLE_EX, Name) + VariableNameSize + TempDataSize;
@@ -689,7 +689,7 @@ RuntimeServiceGetVariableEx (
     SmmVariableHeader->AttributesEx = *AttributesEx;
   }
   CopyMem (SmmVariableHeader->Name, VariableName, SmmVariableHeader->NameSize);
-  if (IsProtected) {
+  if (IsEncrypted) {
     CopyMem((UINT8 *)SmmVariableHeader->Name + SmmVariableHeader->NameSize, Data, *DataSize);
   }
 

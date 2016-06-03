@@ -34,20 +34,19 @@ typedef struct {
 typedef struct {
   EDKII_VARIABLE_KEY_DATA     KeyHeader;
   CHAR8                       AsciiData[KEY_SIZE];
-} GET_VAR_KEY_PROTECT_TEST_STRUCT;
-;
+} GET_VAR_KEY_ENCRYPTED_TEST_STRUCT;
 
 //
 // EDKII_VARIABLE_KEY_AUTHENTICATED test
 //
-#define VAR_KEY_AUTH_TEST_NAME      L"VarKeyAuthTest"
-#define VAR_KEY_AUTH_PEI_TEST_NAME  L"VarKeyAuthPeiTest"
+#define VAR_KEY_AUTHENTICATED_TEST_NAME      L"VarKeyAuthenticatedTest"
+#define VAR_KEY_AUTHENTICATED_PEI_TEST_NAME  L"VarKeyAuthenticatedPeiTest"
 
 //
-// EDKII_VARIABLE_KEY_PROTECTED test
+// EDKII_VARIABLE_KEY_ENCRYPTED test
 //
-#define VAR_KEY_PROTECT_TEST_NAME      L"VarKeyProtectTest"
-#define VAR_KEY_PROTECT_PEI_TEST_NAME  L"VarKeyProtectPeiTest"
+#define VAR_KEY_ENCRYPTED_TEST_NAME          L"VarKeyEncryptedTest"
+#define VAR_KEY_ENCRYPTED_PEI_TEST_NAME      L"VarKeyEncryptedPeiTest"
 
 #define VAR_KEY_TEST_GUID   { \
   0xfde5478e, 0xbdb0, 0x4450, { 0xb2, 0xc0, 0x95, 0x74, 0xc6, 0x94, 0x9e, 0xd } \
@@ -65,17 +64,17 @@ typedef enum {
   @param TestPhase Phase on when test runs
 **/
 VOID
-KeyAuthTest (
+KeyAuthenticatedTest (
   IN TEST_PHASE TestPhase
   );
 
 /**
-  Unit test for EDKII_VARIABLE_KEY_PROTECTED.
+  Unit test for EDKII_VARIABLE_KEY_ENCRYPTED.
 
   @param TestPhase Phase on when test runs
 **/
 VOID
-KeyProtectTest (
+KeyEncryptedTest (
   IN TEST_PHASE TestPhase
   );
 

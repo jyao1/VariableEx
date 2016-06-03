@@ -55,12 +55,12 @@ GET_VAR_KEY_TEST_STRUCT  mGetData = {
   { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 }
 };
 
-GET_VAR_KEY_PROTECT_TEST_STRUCT  mGetDataInput = {
+GET_VAR_KEY_ENCRYPTED_TEST_STRUCT  mGetDataInput = {
   { EDKII_VARIABLE_KEY_TYPE_RAW, KEY_SIZE },
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38 },
 };
 
-GET_VAR_KEY_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
+GET_VAR_KEY_ENCRYPTED_TEST_STRUCT  mGetWrongDataInput = {
   { EDKII_VARIABLE_KEY_TYPE_RAW, KEY_SIZE },
   { 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x39 },
 };
@@ -71,7 +71,7 @@ GET_VAR_KEY_PROTECT_TEST_STRUCT  mGetWrongDataInput = {
   @param TestPhase Phase on when test runs
 **/
 VOID
-KeyAuthTest (
+KeyAuthenticatedTest (
   IN TEST_PHASE TestPhase
   )
 {
@@ -81,12 +81,12 @@ KeyAuthTest (
   UINT32                                Attributes;
   UINT8                                 AttributesEx;
 
-  DEBUG((EFI_D_INFO, "##### KeyAuthTest BEGIN #####\n"));
+  DEBUG((EFI_D_INFO, "##### KeyAuthenticatedTest BEGIN #####\n"));
 
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 1: Create KEY_AUTH variable\n"));
+    DEBUG((EFI_D_INFO, "Test 1: Create KEY_AUTHENTICATED variable\n"));
     Status = TestSetVariableEx (
-               VAR_KEY_AUTH_TEST_NAME,
+               VAR_KEY_AUTHENTICATED_TEST_NAME,
                &mVarKeyTestGuid,
                EFI_VARIABLE_NON_VOLATILE |
                  EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -99,9 +99,9 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 2: Update KEY_AUTH variable\n"));
+    DEBUG((EFI_D_INFO, "Test 2: Update KEY_AUTHENTICATED variable\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -114,9 +114,9 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 3: Update KEY_AUTH variable fail due to invalid key\n"));
+    DEBUG((EFI_D_INFO, "Test 3: Update KEY_AUTHENTICATED variable fail due to invalid key\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -129,9 +129,9 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 4: Update KEY_AUTH variable fail due to invalid attributes\n"));
+    DEBUG((EFI_D_INFO, "Test 4: Update KEY_AUTHENTICATED variable fail due to invalid attributes\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -143,10 +143,10 @@ KeyAuthTest (
     ASSERT(Status == EFI_INVALID_PARAMETER);
   }
   
-  DEBUG((EFI_D_INFO, "Test 5: Get KEY_AUTH variable\n"));
+  DEBUG((EFI_D_INFO, "Test 5: Get KEY_AUTHENTICATED variable\n"));
   DataSize = sizeof(GetData);
   Status = TestGetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        &Attributes,
                        &AttributesEx,
@@ -160,7 +160,7 @@ KeyAuthTest (
   }
 
   if (Status == EFI_SUCCESS) {
-    DEBUG((EFI_D_INFO, "Test 5.1: Get KEY_AUTH variable data correct\n"));
+    DEBUG((EFI_D_INFO, "Test 5.1: Get KEY_AUTHENTICATED variable data correct\n"));
     ASSERT(Attributes == (EFI_VARIABLE_NON_VOLATILE |
                           EFI_VARIABLE_BOOTSERVICE_ACCESS |
                           EFI_VARIABLE_RUNTIME_ACCESS));
@@ -170,9 +170,9 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 6: Delete KEY_AUTH variable fail due to invalid key\n"));
+    DEBUG((EFI_D_INFO, "Test 6: Delete KEY_AUTHENTICATED variable fail due to invalid key\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        0,
                        EDKII_VARIABLE_KEY_AUTHENTICATED,
@@ -183,9 +183,9 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 7: Delete KEY_AUTH variable\n"));
+    DEBUG((EFI_D_INFO, "Test 7: Delete KEY_AUTHENTICATED variable\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        0,
                        EDKII_VARIABLE_KEY_AUTHENTICATED,
@@ -196,10 +196,10 @@ KeyAuthTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 8: Get KEY_AUTH variable fail after deletion\n"));
+    DEBUG((EFI_D_INFO, "Test 8: Get KEY_AUTHENTICATED variable fail after deletion\n"));
     DataSize = sizeof(GetData);
     Status = TestGetVariableEx (
-                       VAR_KEY_AUTH_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_TEST_NAME,
                        &mVarKeyTestGuid,
                        &Attributes,
                        &AttributesEx,
@@ -210,9 +210,9 @@ KeyAuthTest (
   }
 
   if (TestPhase == TestPhaseDxe) {
-    DEBUG((EFI_D_INFO, "Test 9: Set KEY_AUTH variable for PEI test\n"));
+    DEBUG((EFI_D_INFO, "Test 9: Set KEY_AUTHENTICATED variable for PEI test\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_AUTH_PEI_TEST_NAME,
+                       VAR_KEY_AUTHENTICATED_PEI_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -224,37 +224,37 @@ KeyAuthTest (
     ASSERT (Status == EFI_SUCCESS);
   }
 
-  DEBUG((EFI_D_INFO, "##### KeyAuthTest END #####\n"));
+  DEBUG((EFI_D_INFO, "##### KeyAuthenticatedTest END #####\n"));
 }
 
 /**
-  Unit test for EDKII_VARIABLE_KEY_PROTECTED.
+  Unit test for EDKII_VARIABLE_KEY_ENCRYPTED.
   
   @param TestPhase Phase on when test runs
 **/
 VOID
-KeyProtectTest (
+KeyEncryptedTest (
   IN TEST_PHASE TestPhase
   )
 {
   EFI_STATUS                            Status;
   GET_VAR_KEY_TEST_STRUCT               *GetDataOutput;
-  GET_VAR_KEY_PROTECT_TEST_STRUCT       GetDataInput;
+  GET_VAR_KEY_ENCRYPTED_TEST_STRUCT       GetDataInput;
   UINTN                                 DataSize;
   UINT32                                Attributes;
   UINT8                                 AttributesEx;
 
-  DEBUG((EFI_D_INFO, "##### KeyProtectTest BEGIN #####\n"));
+  DEBUG((EFI_D_INFO, "##### KeyEncryptedTest BEGIN #####\n"));
 
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 1: Create KEY_PROTECT variable\n"));
+    DEBUG((EFI_D_INFO, "Test 1: Create KEY_ENCRYPTED variable\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
                          EFI_VARIABLE_RUNTIME_ACCESS,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mSetData),
                        &mSetData
                        );
@@ -262,14 +262,14 @@ KeyProtectTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 2: Update KEY_PROTECT variable\n"));
+    DEBUG((EFI_D_INFO, "Test 2: Update KEY_ENCRYPTED variable\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
                          EFI_VARIABLE_RUNTIME_ACCESS,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mSetRightData),
                        &mSetRightData
                        );
@@ -277,14 +277,14 @@ KeyProtectTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 3: Update KEY_PROTECT variable fail due to invalid key\n"));
+    DEBUG((EFI_D_INFO, "Test 3: Update KEY_ENCRYPTED variable fail due to invalid key\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
                          EFI_VARIABLE_RUNTIME_ACCESS,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mSetWrongData),
                        &mSetWrongData
                        );
@@ -292,9 +292,9 @@ KeyProtectTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 4: Update KEY_PROTECT variable fail due to invalid attributes\n"));
+    DEBUG((EFI_D_INFO, "Test 4: Update KEY_ENCRYPTED variable fail due to invalid attributes\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
@@ -306,12 +306,12 @@ KeyProtectTest (
     ASSERT(Status == EFI_INVALID_PARAMETER);
   }
   
-  DEBUG((EFI_D_INFO, "Test 5: Get KEY_PROTECT variable\n"));
+  DEBUG((EFI_D_INFO, "Test 5: Get KEY_ENCRYPTED variable\n"));
   CopyMem(&GetDataInput, &mGetDataInput, sizeof(GetDataInput));
   DataSize = sizeof(GetDataInput);
-  AttributesEx = EDKII_VARIABLE_KEY_PROTECTED;
+  AttributesEx = EDKII_VARIABLE_KEY_ENCRYPTED;
   Status = TestGetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        &Attributes,
                        &AttributesEx,
@@ -325,21 +325,21 @@ KeyProtectTest (
   }
 
   if (Status == EFI_SUCCESS) {
-    DEBUG((EFI_D_INFO, "Test 5.1: Get KEY_PROTECT variable data correct\n"));
+    DEBUG((EFI_D_INFO, "Test 5.1: Get KEY_ENCRYPTED variable data correct\n"));
     GetDataOutput = (GET_VAR_KEY_TEST_STRUCT *)&GetDataInput;
     ASSERT(Attributes == (EFI_VARIABLE_NON_VOLATILE |
                           EFI_VARIABLE_BOOTSERVICE_ACCESS |
                           EFI_VARIABLE_RUNTIME_ACCESS));
-    ASSERT(AttributesEx == EDKII_VARIABLE_KEY_PROTECTED);
+    ASSERT(AttributesEx == EDKII_VARIABLE_KEY_ENCRYPTED);
     ASSERT(DataSize == sizeof(*GetDataOutput));
     ASSERT(CompareMem(GetDataOutput, &mGetData, sizeof(*GetDataOutput)) == 0);
 
-    DEBUG((EFI_D_INFO, "Test 5.2: Get KEY_PROTECT variable data with wrong key\n"));
+    DEBUG((EFI_D_INFO, "Test 5.2: Get KEY_ENCRYPTED variable data with wrong key\n"));
     CopyMem(&GetDataInput, &mGetWrongDataInput, sizeof(GetDataInput));
     DataSize = sizeof(GetDataInput);
-    AttributesEx = EDKII_VARIABLE_KEY_PROTECTED;
+    AttributesEx = EDKII_VARIABLE_KEY_ENCRYPTED;
     Status = TestGetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        &Attributes,
                        &AttributesEx,
@@ -350,12 +350,12 @@ KeyProtectTest (
   }
 
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 6: Delete KEY_PROTECT variable fail due to invalid key\n"));
+    DEBUG((EFI_D_INFO, "Test 6: Delete KEY_ENCRYPTED variable fail due to invalid key\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        0,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mDeleteWrongData),
                        &mDeleteWrongData
                        );
@@ -363,12 +363,12 @@ KeyProtectTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 7: Delete KEY_PROTECT variable\n"));
+    DEBUG((EFI_D_INFO, "Test 7: Delete KEY_ENCRYPTED variable\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        0,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mDeleteData),
                        &mDeleteData
                        );
@@ -376,12 +376,12 @@ KeyProtectTest (
   }
   
   if (TestPhase != TestPhasePei) {
-    DEBUG((EFI_D_INFO, "Test 8: Get KEY_PROTECT variable fail after deletion\n"));
+    DEBUG((EFI_D_INFO, "Test 8: Get KEY_ENCRYPTED variable fail after deletion\n"));
     CopyMem(&GetDataInput, &mGetDataInput, sizeof(GetDataInput));
     DataSize = sizeof(GetDataInput);
-    AttributesEx = EDKII_VARIABLE_KEY_PROTECTED;
+    AttributesEx = EDKII_VARIABLE_KEY_ENCRYPTED;
     Status = TestGetVariableEx (
-                       VAR_KEY_PROTECT_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_TEST_NAME,
                        &mVarKeyTestGuid,
                        &Attributes,
                        &AttributesEx,
@@ -392,20 +392,20 @@ KeyProtectTest (
   }
 
   if (TestPhase == TestPhaseDxe) {
-    DEBUG((EFI_D_INFO, "Test 9: Set KEY_PROTECT variable for PEI test\n"));
+    DEBUG((EFI_D_INFO, "Test 9: Set KEY_ENCRYPTED variable for PEI test\n"));
     Status = TestSetVariableEx (
-                       VAR_KEY_PROTECT_PEI_TEST_NAME,
+                       VAR_KEY_ENCRYPTED_PEI_TEST_NAME,
                        &mVarKeyTestGuid,
                        EFI_VARIABLE_NON_VOLATILE |
                          EFI_VARIABLE_BOOTSERVICE_ACCESS |
                          EFI_VARIABLE_RUNTIME_ACCESS,
-                       EDKII_VARIABLE_KEY_PROTECTED,
+                       EDKII_VARIABLE_KEY_ENCRYPTED,
                        sizeof(mSetRightData),
                        &mSetRightData
                        );
     ASSERT (Status == EFI_SUCCESS);
   }
 
-  DEBUG((EFI_D_INFO, "##### KeyProtectTest END #####\n"));
+  DEBUG((EFI_D_INFO, "##### KeyEncryptedTest END #####\n"));
 }
 
