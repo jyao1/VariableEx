@@ -12,12 +12,11 @@ WITHOUT WARRANTIES OR REPRESENTATIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED.
 **/
 
 #include <Uefi.h>
+#include <Library/MemoryAllocationLib.h>
 #include <Library/DebugLib.h>
-#include <Library/KeyLib.h>
 #include <Library/BaseCryptLib.h>
-#include <openssl/sha.h>
-#include <openssl/evp.h>
-#include <openssl/aes.h>
+
+#include <Library/KeyLib.h>
 
 #define DEFAULT_AES_KEY_BIT_SIZE       256
 #define DEFAULT_PBKDF2_ITERATION_COUNT 15
@@ -74,7 +73,9 @@ KeyLibGenerateHash(
   )
 {
   BOOLEAN                     Status;
-  SHA256_CTX                  Hash;
+  VOID                        *Hash;
+
+  Status = FALSE;
 
   if (HashType != HASH_TYPE_SHA256) {
     return FALSE;
@@ -87,22 +88,30 @@ KeyLibGenerateHash(
     return FALSE;
   }
 
-  Status = Sha256Init(&Hash);
+  Hash = AllocatePool (Sha256GetContextSize ());
+  if (Hash == NULL) {
+    goto Done;
+  }
+
+  Status = Sha256Init(Hash);
   if (!Status) {
     goto Done;
   }
 
-  Status = Sha256Update(&Hash, SaltValue, SaltSize);
+  Status = Sha256Update(Hash, SaltValue, SaltSize);
   if (!Status) {
     goto Done;
   }
-  Status = Sha256Update(&Hash, Key, KeySize);
+  Status = Sha256Update(Hash, Key, KeySize);
   if (!Status) {
     goto Done;
   }
 
-  Status = Sha256Final(&Hash, KeyHash);
+  Status = Sha256Final(Hash, KeyHash);
 Done:
+  if (Hash != NULL) {
+    FreePool (Hash);
+  }
   return Status;
 }
 
@@ -139,10 +148,10 @@ KeyLibEncrypt(
   IN   UINTN               OutputDataSize
   )
 {
-  INTN                        Status;
+  BOOLEAN                     Status;
   UINT8                       KeyBuffer[(DEFAULT_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
   UINT8                       *Ivec;
-  AES_KEY                     AesKey;
+  VOID                        *AesCtx;
 
   if (SymType != SYM_TYPE_AES) {
     return FALSE;
@@ -158,34 +167,48 @@ KeyLibEncrypt(
   if ((Key == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
     return FALSE;
   }
-  if ((KeySize > INT_MAX) || (SaltSize > INT_MAX)) {
+  if ((KeySize > MAX_UINTN) || (SaltSize > MAX_UINTN)) {
     return FALSE;
   }
 
-  Status = PKCS5_PBKDF2_HMAC(
+  Status = Pkcs5HashPassword (
+             KeySize,
              Key,
-             (INT32)KeySize,
+             SaltSize,
              SaltValue,
-             (INT32)SaltSize,
              DEFAULT_PBKDF2_ITERATION_COUNT,
-             EVP_sha256(),
-             sizeof(KeyBuffer),
+             SHA256_DIGEST_SIZE,
+             sizeof (KeyBuffer),
              KeyBuffer
              );
-  if (Status == 0) {
+  if (!Status) {
     return FALSE;
   }
 
   Ivec = KeyBuffer + (DEFAULT_AES_KEY_BIT_SIZE / 8);
 
-  Status = AES_set_encrypt_key(KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE, &AesKey);
-  if (Status != 0) {
+  AesCtx = AllocatePool (AesGetContextSize());
+  if (AesCtx == NULL) {
     return FALSE;
   }
+  Status = AesInit (AesCtx, KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE);
+  if (!Status) {
+    goto Done;
+  }
 
-  AES_cbc_encrypt(InputData, OutputData, InputDataSize, &AesKey, Ivec, AES_ENCRYPT);
+  Status = AesCbcEncrypt (
+             AesCtx,
+             InputData,
+             InputDataSize,
+             Ivec,
+             OutputData
+             );
 
-  return TRUE;
+Done:
+  if (AesCtx != NULL) {
+    FreePool (AesCtx);
+  }
+  return Status;
 }
 
 /**
@@ -221,10 +244,10 @@ KeyLibDecrypt(
   IN   UINTN               OutputDataSize
   )
 {
-  INTN                        Status;
+  BOOLEAN                     Status;
   UINT8                       KeyBuffer[(DEFAULT_AES_KEY_BIT_SIZE / 8) + AES_BLOCK_SIZE];
   UINT8                       *Ivec;
-  AES_KEY                     AesKey;
+  VOID                        *AesCtx;
 
   if (SymType != SYM_TYPE_AES) {
     return FALSE;
@@ -240,32 +263,41 @@ KeyLibDecrypt(
   if ((Key == NULL) || (SaltValue == NULL) || (InputData == NULL) || (OutputData == NULL)) {
     return FALSE;
   }
-  if ((KeySize > INT_MAX) || (SaltSize > INT_MAX)) {
+  if ((KeySize > MAX_UINTN) || (SaltSize > MAX_UINTN)) {
     return FALSE;
   }
 
-  Status = PKCS5_PBKDF2_HMAC(
+  Status = Pkcs5HashPassword (
+             KeySize,
              Key,
-             (INT32)KeySize,
+             SaltSize,
              SaltValue,
-             (INT32)SaltSize,
              DEFAULT_PBKDF2_ITERATION_COUNT,
-             EVP_sha256(),
-             sizeof(KeyBuffer),
+             SHA256_DIGEST_SIZE,
+             sizeof (KeyBuffer),
              KeyBuffer
              );
-  if (Status == 0) {
+  if (!Status) {
     return FALSE;
   }
 
   Ivec = KeyBuffer + (DEFAULT_AES_KEY_BIT_SIZE / 8);
 
-  Status = AES_set_decrypt_key(KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE, &AesKey);
-  if (Status != 0) {
+  AesCtx = AllocatePool (AesGetContextSize());
+  if (AesCtx == NULL) {
     return FALSE;
   }
 
-  AES_cbc_encrypt(InputData, OutputData, InputDataSize, &AesKey, Ivec, AES_DECRYPT);
+  Status = AesInit (AesCtx, KeyBuffer, DEFAULT_AES_KEY_BIT_SIZE);
+  if (!Status) {
+    goto Done;
+  }
 
-  return TRUE;
+  Status = AesCbcDecrypt (AesCtx, InputData, InputDataSize, Ivec, OutputData);
+
+Done:
+  if (AesCtx != NULL) {
+    FreePool (AesCtx);
+  }
+  return Status;
 }
